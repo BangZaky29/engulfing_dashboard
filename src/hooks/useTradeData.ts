@@ -11,9 +11,9 @@ export function useTradeData() {
     try {
       if (showLoader) setLoading(true);
       const { data, error } = await supabase
-        .from('trade_analytics')
+        .from('trade_deep_analytics_view')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('trade_created_at', { ascending: false });
 
       if (error) {
         throw error;

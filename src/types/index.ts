@@ -1,5 +1,5 @@
 export interface TradeAnalytics {
-  id: number;
+  trade_id: number;
   ticket_id: number;
   symbol: string;
   timeframe: string;
@@ -12,7 +12,13 @@ export interface TradeAnalytics {
   entry_time: string | null;
   exit_time: string | null;
   image_url: string;
-  created_at: string;
+  trade_created_at: string;
+  // New deep analytics fields from View
+  pattern_type?: string;
+  engulf_ratio?: number;
+  ema_trend?: string;
+  confidence_score?: number;
+  signal_time?: string;
 }
 
 export interface DashboardStats {

@@ -25,14 +25,14 @@ export function PerformanceChart({ trades }: PerformanceChartProps) {
   const data = useMemo(() => {
     // Sort ascending for chart (oldest to newest)
     const sortedTrades = [...trades].sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      (a, b) => new Date(a.trade_created_at).getTime() - new Date(b.trade_created_at).getTime()
     );
 
     return sortedTrades.reduce<ChartDataPoint[]>((acc, trade) => {
       const lastProfit = acc.length > 0 ? acc[acc.length - 1].profit : 0;
       const newProfit = lastProfit + (trade.profit || 0);
       acc.push({
-        time: format(new Date(trade.created_at), 'dd MMM HH:mm'),
+        time: format(new Date(trade.trade_created_at), 'dd MMM HH:mm'),
         profit: Number(newProfit.toFixed(2)),
         tradeProfit: trade.profit,
       });

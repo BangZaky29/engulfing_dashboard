@@ -3,6 +3,7 @@ import type { TradeAnalytics } from '../types';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
 import { ImageIcon, Filter } from 'lucide-react';
+import { useLanguage } from '../lib/i18n';
 
 interface TradesTableProps {
   trades: TradeAnalytics[];
@@ -10,6 +11,7 @@ interface TradesTableProps {
 }
 
 export function TradesTable({ trades, onImageClick }: TradesTableProps) {
+  const { t } = useLanguage();
   const [filterMode, setFilterMode] = useState<string>('ALL');
   const [filterResult, setFilterResult] = useState<string>('ALL');
   const [filterSymbol, setFilterSymbol] = useState<string>('ALL');
@@ -32,8 +34,8 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
       
       let matchDate = true;
       if (filterDate) {
-        // Trade created_at is likely ISO string or timestamp
-        const tradeDateStr = new Date(trade.created_at).toISOString().split('T')[0];
+        // Trade trade_created_at is likely ISO string or timestamp
+        const tradeDateStr = new Date(trade.trade_created_at).toISOString().split('T')[0];
         matchDate = tradeDateStr === filterDate;
       }
 
@@ -59,7 +61,7 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
       <div className="flex flex-wrap items-center gap-3 bg-card p-4 rounded-xl border border-slate-700/50 shadow-md">
         <div className="flex items-center gap-2 text-muted mr-2">
           <Filter size={18} />
-          <span className="text-sm font-medium">Filters:</span>
+          <span className="text-sm font-medium">{t('filters')}</span>
         </div>
         
         <select
@@ -67,7 +69,7 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
           onChange={(e) => setFilterMode(e.target.value)}
           className="bg-slate-800 border border-slate-700 text-sm rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-primary"
         >
-          <option value="ALL">All Modes</option>
+          <option value="ALL">{t('allModes')}</option>
           <option value="BUY">BUY</option>
           <option value="SELL">SELL</option>
         </select>
@@ -77,7 +79,7 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
           onChange={(e) => setFilterResult(e.target.value)}
           className="bg-slate-800 border border-slate-700 text-sm rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-primary"
         >
-          <option value="ALL">All Results</option>
+          <option value="ALL">{t('allResults')}</option>
           <option value="PROFIT">PROFIT</option>
           <option value="LOSS">LOSS</option>
         </select>
@@ -87,7 +89,7 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
           onChange={(e) => setFilterSymbol(e.target.value)}
           className="bg-slate-800 border border-slate-700 text-sm rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-primary"
         >
-          <option value="ALL">All Symbols</option>
+          <option value="ALL">{t('allSymbols')}</option>
           {uniqueSymbols.map((sym) => (
             <option key={sym} value={sym}>{sym}</option>
           ))}
@@ -120,33 +122,33 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
           <table className="w-full text-left border-collapse min-w-[340px] md:min-w-full">
             <thead>
               <tr className="bg-slate-800/50 text-muted border-b border-slate-700/50">
-                <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">Time</th>
-                <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">Symbol</th>
-                <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">Mode</th>
-                <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">Result</th>
-                <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">Profit</th>
+                <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">{t('time')}</th>
+                <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">{t('symbol')}</th>
+                <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">{t('mode')}</th>
+                <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">{t('result')}</th>
+                <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">{t('profit')}</th>
                 {/* Sembunyikan kolom Entry-Exit di layar kecil (mobile) */}
-                <th className="hidden md:table-cell px-6 py-4 font-medium text-sm">Entry - Exit</th>
-                <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm text-center">Chart</th>
+                <th className="hidden md:table-cell px-6 py-4 font-medium text-sm">{t('entryExit')}</th>
+                <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm text-center">{t('chart')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/50">
               {paginatedTrades.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-8 text-center text-muted">
-                    No trades match the selected filters.
+                    {t('noTrades')}
                   </td>
                 </tr>
               ) : (
                 paginatedTrades.map((trade) => (
                   <tr
-                    key={trade.id}
+                    key={trade.trade_id}
                     className="hover:bg-slate-800/30 transition-colors"
                   >
                     <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-slate-300">
-                      <div className="md:hidden">{format(new Date(trade.created_at), 'dd MMM')}</div>
-                      <div className="md:hidden text-muted text-[10px]">{format(new Date(trade.created_at), 'HH:mm')}</div>
-                      <span className="hidden md:inline">{format(new Date(trade.created_at), 'dd MMM yyyy HH:mm')}</span>
+                      <div className="md:hidden">{format(new Date(trade.trade_created_at), 'dd MMM')}</div>
+                      <div className="md:hidden text-muted text-[10px]">{format(new Date(trade.trade_created_at), 'HH:mm')}</div>
+                      <span className="hidden md:inline">{format(new Date(trade.trade_created_at), 'dd MMM yyyy HH:mm')}</span>
                     </td>
                     <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-semibold text-text">
                       {trade.symbol} <span className="text-muted text-[10px] md:text-xs font-normal block md:inline">({trade.timeframe})</span>
@@ -211,11 +213,11 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
       {totalPages > 1 && (
         <div className="flex items-center justify-between bg-card p-4 rounded-xl border border-slate-700/50 shadow-md">
           <p className="text-sm text-muted">
-            Showing <span className="font-medium text-text">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
+            {t('showing')} <span className="font-medium text-text">{(currentPage - 1) * itemsPerPage + 1}</span> {t('to')}{' '}
             <span className="font-medium text-text">
               {Math.min(currentPage * itemsPerPage, filteredTrades.length)}
             </span>{' '}
-            of <span className="font-medium text-text">{filteredTrades.length}</span> results
+            {t('of')} <span className="font-medium text-text">{filteredTrades.length}</span> {t('results')}
           </p>
           <div className="flex items-center gap-2">
             <button
@@ -223,17 +225,17 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
               disabled={currentPage === 1}
               className="px-3 py-1.5 text-sm bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              Previous
+              {t('previous')}
             </button>
             <span className="text-sm text-slate-300 font-medium px-2">
-              Page {currentPage} of {totalPages}
+              {t('page')} {currentPage} {t('of')} {totalPages}
             </span>
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
               className="px-3 py-1.5 text-sm bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              Next
+              {t('next')}
             </button>
           </div>
         </div>
