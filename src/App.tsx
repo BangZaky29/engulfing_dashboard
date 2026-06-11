@@ -3,6 +3,7 @@ import { useTradeData } from './hooks/useTradeData';
 import { StatCard } from './components/StatCard';
 import { PerformanceChart } from './components/PerformanceChart';
 import { TradesTable } from './components/TradesTable';
+import { WhatsAppManager } from './components/WhatsAppManager';
 import { ImageModal } from './components/ImageModal';
 import { Activity, TrendingUp, DollarSign, Target, RefreshCw, Calendar } from 'lucide-react';
 import { isToday, isThisWeek, isThisMonth, isThisYear } from 'date-fns';
@@ -122,8 +123,15 @@ function App() {
           />
         </div>
 
-        {/* Chart */}
-        <PerformanceChart trades={timeFilteredTrades} />
+        {/* Chart & WhatsApp Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <PerformanceChart trades={timeFilteredTrades} />
+          </div>
+          <div>
+            <WhatsAppManager />
+          </div>
+        </div>
 
         {/* Table */}
         <div className="space-y-4">
