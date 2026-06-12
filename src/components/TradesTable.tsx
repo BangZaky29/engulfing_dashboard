@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import type { TradeAnalytics } from '../types';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
-import { ImageIcon, Filter } from 'lucide-react';
+import { ImageIcon, Filter, Clock, TrendingUp, TrendingDown, BarChart2, X } from 'lucide-react';
 import { useLanguage } from '../lib/i18n';
 
 interface TradesTableProps {
@@ -16,7 +16,9 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
   const [filterResult, setFilterResult] = useState<string>('ALL');
   const [filterSymbol, setFilterSymbol] = useState<string>('ALL');
   const [filterDate, setFilterDate] = useState<string>('');
-  
+  const [filterTimeFrom, setFilterTimeFrom] = useState<string>('');
+  const [filterTimeTo, setFilterTimeTo] = useState<string>('');
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState<number>(1);
   const itemsPerPage = 10;
@@ -31,22 +33,77 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
       const matchMode = filterMode === 'ALL' || trade.mode === filterMode;
       const matchResult = filterResult === 'ALL' || trade.result === filterResult;
       const matchSymbol = filterSymbol === 'ALL' || trade.symbol === filterSymbol;
-      
+
       let matchDate = true;
       if (filterDate) {
-        // Trade trade_created_at is likely ISO string or timestamp
         const tradeDateStr = new Date(trade.trade_created_at).toISOString().split('T')[0];
         matchDate = tradeDateStr === filterDate;
       }
 
-      return matchMode && matchResult && matchSymbol && matchDate;
+      // Filter jam hanya berlaku jika filter tanggal juga aktif
+      let matchTime = true;
+      if (filterDate && (filterTimeFrom || filterTimeTo)) {
+        const tradeHHmm = format(new Date(trade.trade_created_at), 'HH:mm');
+        if (filterTimeFrom && tradeHHmm < filterTimeFrom) matchTime = false;
+        if (filterTimeTo && tradeHHmm > filterTimeTo) matchTime = false;
+      }
+
+      return matchMode && matchResult && matchSymbol && matchDate && matchTime;
     });
-  }, [trades, filterMode, filterResult, filterSymbol, filterDate]);
+  }, [trades, filterMode, filterResult, filterSymbol, filterDate, filterTimeFrom, filterTimeTo]);
+
+  // Cek apakah ada filter aktif
+  const isAnyFilterActive =
+    filterMode !== 'ALL' ||
+    filterResult !== 'ALL' ||
+    filterSymbol !== 'ALL' ||
+    filterDate !== '' ||
+    filterTimeFrom !== '' ||
+    filterTimeTo !== '';
+
+  // Kalkulasi ringkasan dari hasil filter
+  const filterSummaryStats = useMemo(() => {
+    const total = filteredTrades.length;
+    const profitCount = filteredTrades.filter((t) => t.result === 'PROFIT').length;
+    const lossCount = filteredTrades.filter((t) => t.result === 'LOSS').length;
+    const winRate = total > 0 ? (profitCount / total) * 100 : 0;
+    const netProfit = filteredTrades.reduce((sum, t) => sum + (t.profit ?? 0), 0);
+    // Jumlah moneter profit dan loss
+    const totalProfitSum = filteredTrades
+      .filter((t) => t.result === 'PROFIT')
+      .reduce((sum, t) => sum + (t.profit ?? 0), 0);
+    const totalLossSum = filteredTrades
+      .filter((t) => t.result === 'LOSS')
+      .reduce((sum, t) => sum + (t.profit ?? 0), 0);
+    return { total, profitCount, lossCount, winRate, netProfit, totalProfitSum, totalLossSum };
+  }, [filteredTrades]);
+
+  // Label deskripsi filter aktif
+  const activeFilterLabel = useMemo(() => {
+    const parts: string[] = [];
+    if (filterMode !== 'ALL') parts.push(filterMode);
+    if (filterResult !== 'ALL') parts.push(filterResult);
+    if (filterSymbol !== 'ALL') parts.push(filterSymbol);
+    if (filterDate) {
+      let datePart = filterDate;
+      if (filterTimeFrom || filterTimeTo) {
+        datePart += ` | ${filterTimeFrom || '00:00'} – ${filterTimeTo || '23:59'}`;
+      }
+      parts.push(datePart);
+    }
+    return parts.join(' · ');
+  }, [filterMode, filterResult, filterSymbol, filterDate, filterTimeFrom, filterTimeTo]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterMode, filterResult, filterSymbol, filterDate, trades]);
+  }, [filterMode, filterResult, filterSymbol, filterDate, filterTimeFrom, filterTimeTo, trades]);
+
+  // Clear jam filter
+  const clearTimeFilter = () => {
+    setFilterTimeFrom('');
+    setFilterTimeTo('');
+  };
 
   // Pagination logic
   const totalPages = Math.ceil(filteredTrades.length / itemsPerPage);
@@ -56,67 +113,248 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
   }, [filteredTrades, currentPage]);
 
   return (
-    <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 bg-card p-4 rounded-xl border border-slate-700/50 shadow-md">
-        <div className="flex items-center gap-2 text-muted mr-2">
-          <Filter size={18} />
-          <span className="text-sm font-medium">{t('filters')}</span>
-        </div>
-        
-        <select
-          value={filterMode}
-          onChange={(e) => setFilterMode(e.target.value)}
-          className="bg-slate-800 border border-slate-700 text-sm rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-primary"
-        >
-          <option value="ALL">{t('allModes')}</option>
-          <option value="BUY">BUY</option>
-          <option value="SELL">SELL</option>
-        </select>
+    <div className="space-y-3">
+      {/* ── Filter Container ── */}
+      <div className="bg-card p-4 rounded-xl border border-slate-700/50 shadow-md space-y-3">
+        {/* Row 1: Semua filter */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 text-muted mr-2">
+            <Filter size={18} />
+            <span className="text-sm font-medium">{t('filters')}</span>
+          </div>
 
-        <select
-          value={filterResult}
-          onChange={(e) => setFilterResult(e.target.value)}
-          className="bg-slate-800 border border-slate-700 text-sm rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-primary"
-        >
-          <option value="ALL">{t('allResults')}</option>
-          <option value="PROFIT">PROFIT</option>
-          <option value="LOSS">LOSS</option>
-        </select>
+          {/* Filter Mode */}
+          <select
+            value={filterMode}
+            onChange={(e) => setFilterMode(e.target.value)}
+            className="bg-slate-800 border border-slate-700 text-sm rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-primary"
+          >
+            <option value="ALL">{t('allModes')}</option>
+            <option value="BUY">BUY</option>
+            <option value="SELL">SELL</option>
+          </select>
 
-        <select
-          value={filterSymbol}
-          onChange={(e) => setFilterSymbol(e.target.value)}
-          className="bg-slate-800 border border-slate-700 text-sm rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-primary"
-        >
-          <option value="ALL">{t('allSymbols')}</option>
-          {uniqueSymbols.map((sym) => (
-            <option key={sym} value={sym}>{sym}</option>
-          ))}
-        </select>
+          {/* Filter Result */}
+          <select
+            value={filterResult}
+            onChange={(e) => setFilterResult(e.target.value)}
+            className="bg-slate-800 border border-slate-700 text-sm rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-primary"
+          >
+            <option value="ALL">{t('allResults')}</option>
+            <option value="PROFIT">PROFIT</option>
+            <option value="LOSS">LOSS</option>
+          </select>
 
-        {/* Date Picker Filter */}
-        <div className="relative flex items-center">
-          <input
-            type="date"
-            value={filterDate}
-            onChange={(e) => setFilterDate(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-sm rounded-lg pl-3 pr-2 py-1.5 text-slate-200 focus:outline-none focus:border-primary [color-scheme:dark]"
-            title="Filter by Specific Date"
-          />
+          {/* Filter Symbol */}
+          <select
+            value={filterSymbol}
+            onChange={(e) => setFilterSymbol(e.target.value)}
+            className="bg-slate-800 border border-slate-700 text-sm rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-primary"
+          >
+            <option value="ALL">{t('allSymbols')}</option>
+            {uniqueSymbols.map((sym) => (
+              <option key={sym} value={sym}>{sym}</option>
+            ))}
+          </select>
+
+          {/* Date Picker Filter */}
+          <div className="relative flex items-center">
+            <input
+              type="date"
+              value={filterDate}
+              onChange={(e) => {
+                setFilterDate(e.target.value);
+                // Reset jam jika tanggal di-clear
+                if (!e.target.value) {
+                  clearTimeFilter();
+                }
+              }}
+              className="bg-slate-800 border border-slate-700 text-sm rounded-lg pl-3 pr-8 py-1.5 text-slate-200 focus:outline-none focus:border-primary [color-scheme:dark]"
+              title="Filter by Specific Date"
+            />
+            {filterDate && (
+              <button
+                onClick={() => {
+                  setFilterDate('');
+                  clearTimeFilter();
+                }}
+                className="absolute right-2 text-slate-400 hover:text-white transition-colors"
+                title="Clear Date Filter"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+
+          {/* ── Filter Jam (muncul hanya jika tanggal aktif) ── */}
           {filterDate && (
-            <button
-              onClick={() => setFilterDate('')}
-              className="absolute right-10 text-slate-400 hover:text-white transition-colors"
-              title="Clear Date Filter"
-            >
-              &times;
-            </button>
+            <div className="flex items-center gap-2 border-l border-slate-700 pl-3">
+              <Clock size={14} className="text-primary shrink-0" />
+              <span className="text-xs text-muted shrink-0">{t('timeFrom')}</span>
+              <input
+                type="time"
+                value={filterTimeFrom}
+                onChange={(e) => setFilterTimeFrom(e.target.value)}
+                className="bg-slate-800 border border-slate-700 text-sm rounded-lg px-2 py-1.5 text-slate-200 focus:outline-none focus:border-primary [color-scheme:dark] w-28"
+                title={t('timeFrom')}
+              />
+              <span className="text-muted text-xs">–</span>
+              <span className="text-xs text-muted shrink-0">{t('timeTo')}</span>
+              <input
+                type="time"
+                value={filterTimeTo}
+                onChange={(e) => setFilterTimeTo(e.target.value)}
+                className="bg-slate-800 border border-slate-700 text-sm rounded-lg px-2 py-1.5 text-slate-200 focus:outline-none focus:border-primary [color-scheme:dark] w-28"
+                title={t('timeTo')}
+              />
+              {(filterTimeFrom || filterTimeTo) && (
+                <button
+                  onClick={clearTimeFilter}
+                  className="text-slate-400 hover:text-white transition-colors p-1 rounded hover:bg-slate-700"
+                  title={t('clearTime')}
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>
 
-      {/* Table */}
+      {/* ── Panel Kalkulasi Ringkasan Filter ── */}
+      {isAnyFilterActive && (
+        <div
+          className={cn(
+            'relative overflow-hidden rounded-xl border border-slate-700/60 shadow-lg',
+            'bg-gradient-to-r from-slate-800/90 via-slate-800/70 to-slate-800/90',
+            'border-l-4 border-l-primary'
+          )}
+        >
+          {/* Subtle glow top */}
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+
+          <div className="px-4 py-3 space-y-3">
+            {/* Header */}
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <BarChart2 size={15} className="text-primary" />
+                <span className="text-sm font-semibold text-slate-200">{t('filterSummary')}</span>
+                {activeFilterLabel && (
+                  <span className="text-xs text-muted bg-slate-700/60 px-2 py-0.5 rounded-full border border-slate-600/50">
+                    {activeFilterLabel}
+                  </span>
+                )}
+              </div>
+              <span className="text-xs text-muted">
+                {filterSummaryStats.total} {t('trades')}
+              </span>
+            </div>
+
+            {/* Stats Grid — Row 1: Jumlah Trade */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {/* Total Trades */}
+              <div className="bg-slate-700/40 rounded-lg px-3 py-2.5 border border-slate-600/30">
+                <p className="text-[10px] text-muted uppercase tracking-wide mb-1">{t('totalTradesLabel')}</p>
+                <p className="text-lg font-bold text-slate-100 leading-none">{filterSummaryStats.total}</p>
+              </div>
+
+              {/* Profit Count */}
+              <div className="bg-green-500/10 rounded-lg px-3 py-2.5 border border-green-500/20">
+                <div className="flex items-center gap-1 mb-1">
+                  <TrendingUp size={10} className="text-success" />
+                  <p className="text-[10px] text-success uppercase tracking-wide">{t('profitLabel')} (Trades)</p>
+                </div>
+                <p className="text-lg font-bold text-success leading-none">{filterSummaryStats.profitCount}</p>
+              </div>
+
+              {/* Loss Count */}
+              <div className="bg-red-500/10 rounded-lg px-3 py-2.5 border border-red-500/20">
+                <div className="flex items-center gap-1 mb-1">
+                  <TrendingDown size={10} className="text-danger" />
+                  <p className="text-[10px] text-danger uppercase tracking-wide">{t('lossLabel')} (Trades)</p>
+                </div>
+                <p className="text-lg font-bold text-danger leading-none">{filterSummaryStats.lossCount}</p>
+              </div>
+
+              {/* Win Rate */}
+              <div className="bg-slate-700/40 rounded-lg px-3 py-2.5 border border-slate-600/30">
+                <p className="text-[10px] text-muted uppercase tracking-wide mb-1">{t('winRateLabel')}</p>
+                <p
+                  className={cn(
+                    'text-lg font-bold leading-none',
+                    filterSummaryStats.winRate >= 50 ? 'text-success' : 'text-danger'
+                  )}
+                >
+                  {filterSummaryStats.total > 0
+                    ? `${filterSummaryStats.winRate.toFixed(1)}%`
+                    : '-%'}
+                </p>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="h-px bg-slate-700/50" />
+
+            {/* Stats Grid — Row 2: Kalkulasi Uang */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Total Profit (uang) */}
+              <div className="bg-green-500/10 rounded-lg px-4 py-3 border border-green-500/20">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <TrendingUp size={11} className="text-success" />
+                  <p className="text-[10px] text-success uppercase tracking-wide font-semibold">Total Profit</p>
+                </div>
+                <p className="text-xl font-bold font-mono text-success leading-none">
+                  +{filterSummaryStats.totalProfitSum.toFixed(2)}
+                </p>
+                <p className="text-[10px] text-muted mt-1">{filterSummaryStats.profitCount} trade menang</p>
+              </div>
+
+              {/* Total Loss (uang) */}
+              <div className="bg-red-500/10 rounded-lg px-4 py-3 border border-red-500/20">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <TrendingDown size={11} className="text-danger" />
+                  <p className="text-[10px] text-danger uppercase tracking-wide font-semibold">Total Loss</p>
+                </div>
+                <p className="text-xl font-bold font-mono text-danger leading-none">
+                  {filterSummaryStats.totalLossSum.toFixed(2)}
+                </p>
+                <p className="text-[10px] text-muted mt-1">{filterSummaryStats.lossCount} trade kalah</p>
+              </div>
+
+              {/* Total Bersih = Net Profit */}
+              <div
+                className={cn(
+                  'rounded-lg px-4 py-3 border',
+                  filterSummaryStats.netProfit >= 0
+                    ? 'bg-gradient-to-br from-green-500/15 to-green-500/5 border-green-500/30'
+                    : 'bg-gradient-to-br from-red-500/15 to-red-500/5 border-red-500/30'
+                )}
+              >
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <BarChart2 size={11} className={filterSummaryStats.netProfit >= 0 ? 'text-success' : 'text-danger'} />
+                  <p className={cn('text-[10px] uppercase tracking-wide font-semibold', filterSummaryStats.netProfit >= 0 ? 'text-success' : 'text-danger')}>
+                    Total Bersih
+                  </p>
+                </div>
+                <p
+                  className={cn(
+                    'text-xl font-bold font-mono leading-none',
+                    filterSummaryStats.netProfit >= 0 ? 'text-success' : 'text-danger'
+                  )}
+                >
+                  {filterSummaryStats.netProfit >= 0 ? '+' : ''}
+                  {filterSummaryStats.netProfit.toFixed(2)}
+                </p>
+                <p className="text-[10px] text-muted mt-1">
+                  dari {filterSummaryStats.total} total trade
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Table ── */}
       <div className="bg-card rounded-xl border border-slate-700/50 shadow-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[340px] md:min-w-full">
@@ -209,7 +447,7 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
         </div>
       </div>
 
-      {/* Pagination Controls */}
+      {/* ── Pagination Controls ── */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between bg-card p-4 rounded-xl border border-slate-700/50 shadow-md">
           <p className="text-sm text-muted">
