@@ -29,3 +29,25 @@ export interface DashboardStats {
   totalLoss: number;
   netProfit: number;
 }
+
+export interface ReportHistory {
+  id: string;
+  report_type: string;
+  report_date: string;
+  file_url: string;
+  total_trades: number;
+  win_rate: number;
+  total_profit: number;
+  created_at: string;
+}
+
+export interface EngulfingSignal {
+  id: number;
+  symbol: string;
+  timeframe: string;
+  signal_time: string;
+  pattern_type: string;
+  is_confirmed: boolean;
+  notes?: string;
+  created_at: string;
+}

@@ -8,18 +8,23 @@ import { HourlyWinRateChart } from './components/analytics/HourlyWinRateChart';
 import { PatternAnalysisChart } from './components/analytics/PatternAnalysisChart';
 import { PatternClusterAnalysis } from './components/analytics/PatternClusterAnalysis';
 import { GradeAnalysisChart } from './components/analytics/GradeAnalysisChart';
+import { SignalFunnelChart } from './components/analytics/SignalFunnelChart';
+import { HoldingTimeChart } from './components/analytics/HoldingTimeChart';
+import { ReportGallery } from './components/analytics/ReportGallery';
 import { ImageModal } from './components/ImageModal';
-import { Activity, TrendingUp, DollarSign, Target, RefreshCw, Calendar, BarChart3, ScatterChart as ScatterIcon, LayoutDashboard, Globe, Award } from 'lucide-react';
+import { Activity, TrendingUp, DollarSign, Target, RefreshCw, Calendar, BarChart3, ScatterChart as ScatterIcon, LayoutDashboard, Globe, Award, FileText, Clock as ClockIcon, Filter as FilterIcon } from 'lucide-react';
 import { isToday, isThisWeek, isThisMonth, isThisYear } from 'date-fns';
 import { calculateDashboardStats } from './lib/utils';
 import { useLanguage } from './lib/i18n';
+import { useSignalData } from './hooks/useSignalData';
 
 export type TimeFilter = 'ALL' | 'TODAY' | 'WEEK' | 'MONTH' | 'YEAR';
-type Tab = 'OVERVIEW' | 'DEEP_ANALYTICS';
+type Tab = 'OVERVIEW' | 'DEEP_ANALYTICS' | 'REPORTS';
 
 function App() {
   const { t, language, setLanguage } = useLanguage();
   const { trades, loading, error, refetch } = useTradeData();
+  const { signals } = useSignalData();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('ALL');
   const [activeTab, setActiveTab] = useState<Tab>('OVERVIEW');
@@ -160,6 +165,16 @@ function App() {
               <BarChart3 size={18} />
               {t('deepAnalytics')}
             </button>
+            <button
+              onClick={() => setActiveTab('REPORTS')}
+              className={`${activeTab === 'REPORTS'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-slate-400 hover:text-slate-300 hover:border-slate-300'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors`}
+            >
+              <FileText size={18} />
+              Arsip Laporan
+            </button>
           </nav>
         </div>
 
@@ -226,6 +241,37 @@ function App() {
               </div>
             </div>
 
+            {/* New Grid for Funnel and Holding Time */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Signal Funnel */}
+              <div className="bg-surface rounded-xl p-6 border border-white/5 shadow-xl relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="relative z-10 flex flex-col h-full">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FilterIcon className="text-primary" size={20} />
+                    <h2 className="text-lg font-semibold text-white">Sinyal vs Eksekusi (Funnel)</h2>
+                  </div>
+                  <p className="text-sm text-slate-400 mb-4">Menganalisa seberapa ketat filter bot menyaring sinyal mentah MT5 menjadi eksekusi OP.</p>
+                  <div className="flex-1 flex items-center justify-center">
+                    <SignalFunnelChart trades={timeFilteredTrades} signals={signals} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Holding Time */}
+              <div className="bg-surface rounded-xl p-6 border border-white/5 shadow-xl relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ClockIcon className="text-primary" size={20} />
+                    <h2 className="text-lg font-semibold text-white">Analisa Waktu Tahan (Holding Time)</h2>
+                  </div>
+                  <p className="text-sm text-slate-400">Distribusi durasi floating (dari OP sampai Close) dibandingkan dengan hasil Profit/Loss.</p>
+                  <HoldingTimeChart trades={timeFilteredTrades} />
+                </div>
+              </div>
+            </div>
+
             {/* Pattern Clustering Gallery */}
             <PatternClusterAnalysis trades={timeFilteredTrades} />
             
@@ -238,6 +284,17 @@ function App() {
                 <li>{t('tip3')}</li>
               </ul>
             </div>
+          </div>
+        )}
+
+        {/* Tab Content: REPORTS */}
+        {activeTab === 'REPORTS' && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-2">Arsip Laporan PDF</h2>
+              <p className="text-slate-400">Daftar seluruh laporan rekapitulasi trading yang dihasilkan oleh sistem secara otomatis.</p>
+            </div>
+            <ReportGallery />
           </div>
         )}
 
