@@ -7,8 +7,9 @@ import { WhatsAppManager } from './components/WhatsAppManager';
 import { HourlyWinRateChart } from './components/analytics/HourlyWinRateChart';
 import { PatternAnalysisChart } from './components/analytics/PatternAnalysisChart';
 import { PatternClusterAnalysis } from './components/analytics/PatternClusterAnalysis';
+import { GradeAnalysisChart } from './components/analytics/GradeAnalysisChart';
 import { ImageModal } from './components/ImageModal';
-import { Activity, TrendingUp, DollarSign, Target, RefreshCw, Calendar, BarChart3, ScatterChart as ScatterIcon, LayoutDashboard, Globe } from 'lucide-react';
+import { Activity, TrendingUp, DollarSign, Target, RefreshCw, Calendar, BarChart3, ScatterChart as ScatterIcon, LayoutDashboard, Globe, Award } from 'lucide-react';
 import { isToday, isThisWeek, isThisMonth, isThisYear } from 'date-fns';
 import { calculateDashboardStats } from './lib/utils';
 import { useLanguage } from './lib/i18n';
@@ -209,6 +210,19 @@ function App() {
                   <p className="text-sm text-slate-400">{t('patternRatioDesc')}</p>
                   <PatternAnalysisChart trades={timeFilteredTrades} />
                 </div>
+              </div>
+            </div>
+
+            {/* Grade Analysis */}
+            <div className="bg-surface rounded-xl p-6 border border-white/5 shadow-xl relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-2">
+                  <Award className="text-primary" size={20} />
+                  <h2 className="text-lg font-semibold text-white">Analisa Performa berdasarkan Grade</h2>
+                </div>
+                <p className="text-sm text-slate-400">Distribusi persentase kemenangan (Win Rate) dan total keuntungan bersih untuk masing-masing kelompok Grade.</p>
+                <GradeAnalysisChart trades={timeFilteredTrades} />
               </div>
             </div>
 

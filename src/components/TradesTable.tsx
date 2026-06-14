@@ -15,6 +15,7 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
   const [filterMode, setFilterMode] = useState<string>('ALL');
   const [filterResult, setFilterResult] = useState<string>('ALL');
   const [filterSymbol, setFilterSymbol] = useState<string>('ALL');
+  const [filterGrade, setFilterGrade] = useState<string>('ALL');
   const [filterDate, setFilterDate] = useState<string>('');
   const [filterTimeFrom, setFilterTimeFrom] = useState<string>('');
   const [filterTimeTo, setFilterTimeTo] = useState<string>('');
@@ -34,6 +35,16 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
       const matchResult = filterResult === 'ALL' || trade.result === filterResult;
       const matchSymbol = filterSymbol === 'ALL' || trade.symbol === filterSymbol;
 
+      let tradeGrade = '-';
+      try {
+        if (trade.notes) {
+          const n = JSON.parse(trade.notes);
+          tradeGrade = n.grade || '-';
+        }
+      } catch (e) {}
+      
+      const matchGrade = filterGrade === 'ALL' || tradeGrade === filterGrade;
+
       let matchDate = true;
       if (filterDate) {
         const tradeDateStr = new Date(trade.trade_created_at).toISOString().split('T')[0];
@@ -48,15 +59,16 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
         if (filterTimeTo && tradeHHmm > filterTimeTo) matchTime = false;
       }
 
-      return matchMode && matchResult && matchSymbol && matchDate && matchTime;
+      return matchMode && matchResult && matchSymbol && matchGrade && matchDate && matchTime;
     });
-  }, [trades, filterMode, filterResult, filterSymbol, filterDate, filterTimeFrom, filterTimeTo]);
+  }, [trades, filterMode, filterResult, filterSymbol, filterGrade, filterDate, filterTimeFrom, filterTimeTo]);
 
   // Cek apakah ada filter aktif
   const isAnyFilterActive =
     filterMode !== 'ALL' ||
     filterResult !== 'ALL' ||
     filterSymbol !== 'ALL' ||
+    filterGrade !== 'ALL' ||
     filterDate !== '' ||
     filterTimeFrom !== '' ||
     filterTimeTo !== '';
@@ -84,6 +96,7 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
     if (filterMode !== 'ALL') parts.push(filterMode);
     if (filterResult !== 'ALL') parts.push(filterResult);
     if (filterSymbol !== 'ALL') parts.push(filterSymbol);
+    if (filterGrade !== 'ALL') parts.push(`Grade ${filterGrade}`);
     if (filterDate) {
       let datePart = filterDate;
       if (filterTimeFrom || filterTimeTo) {
@@ -92,12 +105,12 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
       parts.push(datePart);
     }
     return parts.join(' · ');
-  }, [filterMode, filterResult, filterSymbol, filterDate, filterTimeFrom, filterTimeTo]);
+  }, [filterMode, filterResult, filterSymbol, filterGrade, filterDate, filterTimeFrom, filterTimeTo]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterMode, filterResult, filterSymbol, filterDate, filterTimeFrom, filterTimeTo, trades]);
+  }, [filterMode, filterResult, filterSymbol, filterGrade, filterDate, filterTimeFrom, filterTimeTo, trades]);
 
   // Clear jam filter
   const clearTimeFilter = () => {
@@ -155,6 +168,22 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
             {uniqueSymbols.map((sym) => (
               <option key={sym} value={sym}>{sym}</option>
             ))}
+          </select>
+
+          {/* Filter Grade */}
+          <select
+            value={filterGrade}
+            onChange={(e) => setFilterGrade(e.target.value)}
+            className="bg-slate-800 border border-slate-700 text-sm rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-primary"
+          >
+            <option value="ALL">Semua Grade</option>
+            <option value="A+">Grade A+</option>
+            <option value="A">Grade A</option>
+            <option value="B+">Grade B+</option>
+            <option value="B">Grade B</option>
+            <option value="C+">Grade C+</option>
+            <option value="C">Grade C</option>
+            <option value="D">Grade D</option>
           </select>
 
           {/* Date Picker Filter */}
@@ -361,12 +390,14 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
             <thead>
               <tr className="bg-slate-800/50 text-muted border-b border-slate-700/50">
                 <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">{t('time')}</th>
+                <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">Ticket ID</th>
                 <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">{t('symbol')}</th>
                 <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">{t('mode')}</th>
                 <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">{t('result')}</th>
                 <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">{t('profit')}</th>
                 {/* Sembunyikan kolom Entry-Exit di layar kecil (mobile) */}
                 <th className="hidden md:table-cell px-6 py-4 font-medium text-sm">{t('entryExit')}</th>
+                <th className="hidden md:table-cell px-6 py-4 font-medium text-sm">Grade & Score</th>
                 <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm text-center">{t('chart')}</th>
               </tr>
             </thead>
@@ -387,6 +418,9 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
                       <div className="md:hidden">{format(new Date(trade.trade_created_at), 'dd MMM')}</div>
                       <div className="md:hidden text-muted text-[10px]">{format(new Date(trade.trade_created_at), 'HH:mm')}</div>
                       <span className="hidden md:inline">{format(new Date(trade.trade_created_at), 'dd MMM yyyy HH:mm')}</span>
+                    </td>
+                    <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-mono text-slate-400">
+                      #{trade.ticket_id}
                     </td>
                     <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm font-semibold text-text">
                       {trade.symbol} <span className="text-muted text-[10px] md:text-xs font-normal block md:inline">({trade.timeframe})</span>
@@ -427,6 +461,30 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
                     <td className="hidden md:table-cell px-6 py-4 text-xs text-muted">
                       <div>Entry: {trade.op_price}</div>
                       <div>Exit: {trade.result === 'PROFIT' ? trade.tp_price : trade.sl_price}</div>
+                    </td>
+                    <td className="hidden md:table-cell px-6 py-4">
+                      {(() => {
+                        try {
+                          const n = trade.notes ? JSON.parse(trade.notes) : {};
+                          const g = n.grade || '-';
+                          const sb = n.score_breakdown || '';
+                          return (
+                            <div className="flex flex-col items-start gap-1">
+                              <span className={cn(
+                                "px-2 py-0.5 rounded text-xs font-bold",
+                                g.startsWith('A') ? "bg-success/20 text-success" :
+                                g.startsWith('B') ? "bg-primary/20 text-primary" :
+                                g.startsWith('C') ? "bg-amber-400/20 text-amber-400" :
+                                g === '-' ? "bg-slate-700 text-slate-300" :
+                                "bg-danger/20 text-danger"
+                              )}>{g}</span>
+                              {sb && <span className="text-[9px] text-muted font-mono tracking-tight whitespace-nowrap">{sb}</span>}
+                            </div>
+                          );
+                        } catch(e) {
+                          return <span className="text-xs text-muted">-</span>;
+                        }
+                      })()}
                     </td>
                     <td className="px-3 md:px-6 py-3 md:py-4 text-center">
                       {trade.image_url && (

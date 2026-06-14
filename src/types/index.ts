@@ -19,6 +19,7 @@ export interface TradeAnalytics {
   ema_trend?: string;
   confidence_score?: number;
   signal_time?: string;
+  notes?: string;
 }
 
 export interface DashboardStats {
