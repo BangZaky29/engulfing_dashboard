@@ -40,6 +40,21 @@ export function PerformanceChart({ trades }: PerformanceChartProps) {
     }, []);
   }, [trades]);
 
+  const off = useMemo(() => {
+    if (data.length === 0) return 1;
+    const profits = data.map((d) => d.profit);
+    const dataMax = Math.max(...profits);
+    const dataMin = Math.min(...profits);
+
+    if (dataMax <= 0) {
+      return 0;
+    }
+    if (dataMin >= 0) {
+      return 1;
+    }
+    return dataMax / (dataMax - dataMin);
+  }, [data]);
+
   if (trades.length === 0) {
     return (
       <div className="bg-card rounded-xl border border-slate-700/50 shadow-lg p-6 h-[400px] flex items-center justify-center">
@@ -64,8 +79,14 @@ export function PerformanceChart({ trades }: PerformanceChartProps) {
           >
             <defs>
               <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#38bdf8" stopOpacity={0} />
+                <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.3} />
+                <stop offset={off} stopColor="#38bdf8" stopOpacity={0} />
+                <stop offset={off} stopColor="#ef4444" stopOpacity={0} />
+                <stop offset="100%" stopColor="#ef4444" stopOpacity={0.3} />
+              </linearGradient>
+              <linearGradient id="strokeProfit" x1="0" y1="0" x2="0" y2="1">
+                <stop offset={off} stopColor="#38bdf8" stopOpacity={1} />
+                <stop offset={off} stopColor="#ef4444" stopOpacity={1} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
@@ -91,12 +112,17 @@ export function PerformanceChart({ trades }: PerformanceChartProps) {
               }}
               itemStyle={{ color: '#38bdf8' }}
               labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
-              formatter={(value: number) => [`$${value}`, 'Cumulative Profit']}
+              formatter={(value: number) => [
+                <span style={{ color: value >= 0 ? '#38bdf8' : '#ef4444' }}>
+                  {`$${value}`}
+                </span>,
+                'Cumulative Profit'
+              ]}
             />
             <Area
               type="monotone"
               dataKey="profit"
-              stroke="#38bdf8"
+              stroke="url(#strokeProfit)"
               strokeWidth={2}
               fillOpacity={1}
               fill="url(#colorProfit)"
