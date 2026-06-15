@@ -48,6 +48,7 @@ export interface EngulfingSignal {
   signal_time: string;
   pattern_type: string;
   is_confirmed: boolean;
+  skip_reason?: string | null;
   notes?: string;
   created_at: string;
 }

@@ -12,6 +12,7 @@ import { SignalFunnelChart } from './components/analytics/SignalFunnelChart';
 import { HoldingTimeChart } from './components/analytics/HoldingTimeChart';
 import { ReportGallery } from './components/analytics/ReportGallery';
 import { ImageModal } from './components/ImageModal';
+import { SignalsTable } from './components/SignalsTable';
 import { Activity, TrendingUp, DollarSign, Target, RefreshCw, Calendar, BarChart3, ScatterChart as ScatterIcon, LayoutDashboard, Globe, Award, FileText, Clock as ClockIcon, Filter as FilterIcon } from 'lucide-react';
 import { isToday, isThisWeek, isThisMonth, isThisYear } from 'date-fns';
 import { calculateDashboardStats } from './lib/utils';
@@ -19,7 +20,7 @@ import { useLanguage } from './lib/i18n';
 import { useSignalData } from './hooks/useSignalData';
 
 export type TimeFilter = 'ALL' | 'TODAY' | 'WEEK' | 'MONTH' | 'YEAR';
-type Tab = 'OVERVIEW' | 'DEEP_ANALYTICS' | 'REPORTS';
+type Tab = 'OVERVIEW' | 'SIGNALS' | 'DEEP_ANALYTICS' | 'REPORTS';
 
 function App() {
   const { t, language, setLanguage } = useLanguage();
@@ -156,6 +157,16 @@ function App() {
               {t('overview')}
             </button>
             <button
+              onClick={() => setActiveTab('SIGNALS')}
+              className={`${activeTab === 'SIGNALS'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-slate-400 hover:text-slate-300 hover:border-slate-300'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors`}
+            >
+              <Activity size={18} />
+              Riwayat Trigger
+            </button>
+            <button
               onClick={() => setActiveTab('DEEP_ANALYTICS')}
               className={`${activeTab === 'DEEP_ANALYTICS'
                 ? 'border-primary text-primary'
@@ -194,6 +205,17 @@ function App() {
               <h3 className="text-xl font-semibold text-white">{t('recentTrades')}</h3>
               <TradesTable trades={timeFilteredTrades} onImageClick={setSelectedImage} />
             </div>
+          </div>
+        )}
+
+        {/* Tab Content: SIGNALS */}
+        {activeTab === 'SIGNALS' && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-2">Riwayat Trigger & Sinyal</h2>
+              <p className="text-slate-400">Daftar lengkap seluruh trigger engulfing yang dideteksi scanner, baik yang dieksekusi maupun yang dibatalkan (dilewati) oleh filter.</p>
+            </div>
+            <SignalsTable signals={signals} />
           </div>
         )}
 
