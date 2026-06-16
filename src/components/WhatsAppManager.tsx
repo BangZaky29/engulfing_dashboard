@@ -24,7 +24,7 @@ export function WhatsAppManager() {
       .channel('schema-db-changes')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'whatsapp_sessions', filter: 'id=eq.main_session' },
+        { event: '*', schema: 'public', table: 'whatsapp_public_status', filter: 'id=eq.main_session' },
         (payload) => {
           setSession(payload.new as WaSession);
         }
@@ -39,7 +39,7 @@ export function WhatsAppManager() {
   async function fetchSession() {
     setLoading(true);
     const { data, error } = await supabase
-      .from('whatsapp_sessions')
+      .from('whatsapp_public_status')
       .select('id, status, qr_code')
       .eq('id', 'main_session')
       .single();
@@ -55,7 +55,7 @@ export function WhatsAppManager() {
     
     // Set status to LOGOUT_REQUESTED, let backend handle the actual logout
     await supabase
-      .from('whatsapp_sessions')
+      .from('whatsapp_public_status')
       .update({ status: 'LOGOUT_REQUESTED', qr_code: null })
       .eq('id', 'main_session');
   }
