@@ -1,0 +1,12 @@
+WARNING: git-filter-branch has a glut of gotchas generating mangled history
+	 rewrites.  Hit Ctrl-C before proceeding to abort, then use an
+	 alternative filtering tool such as 'git filter-repo'
+	 (https://github.com/newren/git-filter-repo/) instead.  See the
+	 filter-branch manual page for more details; to squelch this warning,
+	 set FILTER_BRANCH_SQUELCH_WARNING=1.
+Proceeding with filter-branch...
+
+Rewrite db681b885b24b4c8c2a8dc6e658606016e4fbfc7 (1/11) (0 seconds passed, remaining 0 predicted)    Rewrite 17c4e6aee905a689d2361aa308e52af16f4653b3 (2/11) (1 seconds passed, remaining 4 predicted)    rm '.env'
+Rewrite df7ff4de6fed4f9172f0e82dc1ae52001d51a779 (2/11) (1 seconds passed, remaining 4 predicted)    Rewrite 67b2fe96701d5c4ca647f73461ffa800c2dc7ab4 (2/11) (1 seconds passed, remaining 4 predicted)    Rewrite 8c346cfeff65d6429bf70446577d9e796d2dfb65 (5/11) (4 seconds passed, remaining 4 predicted)    Rewrite 50cd3e3afc4abb9fc489d608cf342f3cee498b6c (5/11) (4 seconds passed, remaining 4 predicted)    Rewrite 55c9ec1235b38a8e5d13d6249d5ef1f86d69460a (7/11) (5 seconds passed, remaining 2 predicted)    Rewrite 7b99e7e2bbdda7937a137f9dd2371314be67f974 (7/11) (5 seconds passed, remaining 2 predicted)    Rewrite 7300320c3b5ab306e95e9496af21a57ad0795859 (9/11) (7 seconds passed, remaining 1 predicted)    Rewrite ef12916230453100e934645ad87612fe085aaea2 (9/11) (7 seconds passed, remaining 1 predicted)    Rewrite fb9f57ba18ef4a9c9a824f9e0e51b74a28e940a1 (11/11) (8 seconds passed, remaining 0 predicted)    
+Ref 'refs/heads/main' was rewritten
+Ref 'refs/remotes/origin/main' was rewritten

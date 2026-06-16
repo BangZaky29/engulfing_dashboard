@@ -7,23 +7,43 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Node
+node_modules/
+.npm/
+
+# Build
+dist/
+dist-ssr/
 *.local
+
+# TypeScript
+*.tsbuildinfo
+
+# Testing
+coverage/
+.nyc_output/
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-.idea
+!.vscode/settings.json
+.idea/
 .DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+Thumbs.db
 
 # Environment Variables
 .env
 .env.*
 !.env.example
+
+# Deployment / Hosting
+.vercel/
+.netlify/
+.firebase/
+firebase-debug.log
+firebase-debug.log.*

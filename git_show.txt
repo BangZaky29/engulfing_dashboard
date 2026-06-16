@@ -1,0 +1,14 @@
+commit df7ff4de6fed4f9172f0e82dc1ae52001d51a779
+Author: Zaky Aulia Qolbi <bangzaky0029@gmail.com>
+Date:   Thu Jun 11 11:06:07 2026 +0700
+
+    chore: hapus file .env dari tracking git
+
+diff --git a/.env b/.env
+deleted file mode 100644
+index f5cd102..0000000
+--- a/.env
++++ /dev/null
+@@ -1,2 +0,0 @@
+-VITE_SUPABASE_URL=https://wcsxwordxurulfslwgcu.supabase.co
+-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indjc3h3b3JkeHVydWxmc2x3Z2N1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMDAyMzMsImV4cCI6MjA5NjY3NjIzM30.jU_ivQWsu58vj9fLkIH43tU_FLssS9CD6XGAqMBVFi8
