@@ -1,32 +1,44 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import type { TradeAnalytics } from '../types';
+import type { TradeAnalytics, TradeActiveLog } from '../types';
 
 export function useTradeData() {
   const [trades, setTrades] = useState<TradeAnalytics[]>([]);
+  const [activeLogs, setActiveLogs] = useState<TradeActiveLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchTrades = async (showLoader = true) => {
     try {
       if (showLoader) setLoading(true);
-      const { data, error } = await supabase
+      
+      const { data: tradesData, error: tradesErr } = await supabase
         .from('trade_deep_analytics_view')
         .select('*')
         .order('trade_created_at', { ascending: false });
 
-      if (error) {
-        throw error;
+      if (tradesErr) {
+        throw tradesErr;
       }
 
-      setTrades((data as TradeAnalytics[]) || []);
+      const { data: logsData, error: logsErr } = await supabase
+        .from('trade_active_logs')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (logsErr) {
+        throw logsErr;
+      }
+
+      setTrades((tradesData as TradeAnalytics[]) || []);
+      setActiveLogs((logsData as TradeActiveLog[]) || []);
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message);
       } else {
         setError(String(err));
       }
-      console.error('Error fetching trades:', err);
+      console.error('Error fetching trades and logs:', err);
     } finally {
       setLoading(false);
     }
@@ -37,8 +49,8 @@ export function useTradeData() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchTrades(false);
 
-    // Subscribe to realtime changes
-    const channel = supabase
+    // Subscribe to realtime changes on trade_analytics
+    const channelTrades = supabase
       .channel('trade_analytics_changes')
       .on(
         'postgres_changes',
@@ -47,19 +59,33 @@ export function useTradeData() {
           schema: 'public',
           table: 'trade_analytics',
         },
-        (payload) => {
-          console.log('Realtime payload:', payload);
-          // Refresh data to keep it simple and ensure ordering
-          // Alternatively, we could update the state directly
-          fetchTrades();
+        () => {
+          void fetchTrades(false);
+        }
+      )
+      .subscribe();
+
+    // Subscribe to realtime changes on trade_active_logs
+    const channelLogs = supabase
+      .channel('trade_active_logs_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'trade_active_logs',
+        },
+        () => {
+          void fetchTrades(false);
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(channelTrades);
+      supabase.removeChannel(channelLogs);
     };
   }, []);
 
-  return { trades, loading, error, refetch: fetchTrades };
+  return { trades, activeLogs, loading, error, refetch: fetchTrades };
 }

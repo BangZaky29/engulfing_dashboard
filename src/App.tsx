@@ -13,18 +13,21 @@ import { HoldingTimeChart } from './components/analytics/HoldingTimeChart';
 import { ReportGallery } from './components/analytics/ReportGallery';
 import { ImageModal } from './components/ImageModal';
 import { SignalsTable } from './components/SignalsTable';
-import { Activity, TrendingUp, DollarSign, Target, RefreshCw, Calendar, BarChart3, ScatterChart as ScatterIcon, LayoutDashboard, Globe, Award, FileText, Clock as ClockIcon, Filter as FilterIcon } from 'lucide-react';
+import { ActiveLogsTable } from './components/ActiveLogsTable';
+import { SessionAnalysisChart } from './components/analytics/SessionAnalysisChart';
+import { LimitRatioChart } from './components/analytics/LimitRatioChart';
+import { Activity, TrendingUp, DollarSign, Target, RefreshCw, Calendar, BarChart3, ScatterChart as ScatterIcon, LayoutDashboard, Globe, Award, FileText, Clock as ClockIcon, Filter as FilterIcon, ShieldAlert } from 'lucide-react';
 import { isToday, isThisWeek, isThisMonth, isThisYear } from 'date-fns';
 import { calculateDashboardStats } from './lib/utils';
 import { useLanguage } from './lib/i18n';
 import { useSignalData } from './hooks/useSignalData';
 
 export type TimeFilter = 'ALL' | 'TODAY' | 'WEEK' | 'MONTH' | 'YEAR';
-type Tab = 'OVERVIEW' | 'SIGNALS' | 'DEEP_ANALYTICS' | 'REPORTS';
+type Tab = 'OVERVIEW' | 'SIGNALS' | 'ACTIVE_LOGS' | 'DEEP_ANALYTICS' | 'REPORTS';
 
 function App() {
   const { t, language, setLanguage } = useLanguage();
-  const { trades, loading, error, refetch } = useTradeData();
+  const { trades, activeLogs, loading, error, refetch } = useTradeData();
   const { signals } = useSignalData();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('ALL');
@@ -167,6 +170,16 @@ function App() {
               Riwayat Trigger
             </button>
             <button
+              onClick={() => setActiveTab('ACTIVE_LOGS')}
+              className={`${activeTab === 'ACTIVE_LOGS'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-slate-400 hover:text-slate-300 hover:border-slate-300'
+                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors`}
+            >
+              <ShieldAlert size={18} />
+              Riwayat Pending Order
+            </button>
+            <button
               onClick={() => setActiveTab('DEEP_ANALYTICS')}
               className={`${activeTab === 'DEEP_ANALYTICS'
                 ? 'border-primary text-primary'
@@ -219,6 +232,17 @@ function App() {
           </div>
         )}
 
+        {/* Tab Content: ACTIVE_LOGS */}
+        {activeTab === 'ACTIVE_LOGS' && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <div>
+              <h2 className="text-2xl font-bold text-white mb-2">Riwayat Pending Order (Limit Order)</h2>
+              <p className="text-slate-400">Daftar lengkap status seluruh limit order yang pernah dikirim ke MT5, termasuk yang sukses tersentuh (filled), kadaluwarsa (expired), atau dibatalkan karena override.</p>
+            </div>
+            <ActiveLogsTable logs={activeLogs} />
+          </div>
+        )}
+
         {/* Tab Content: DEEP ANALYTICS */}
         {activeTab === 'DEEP_ANALYTICS' && (
           <div className="space-y-6 animate-in fade-in duration-300">
@@ -246,6 +270,34 @@ function App() {
                   </div>
                   <p className="text-sm text-slate-400">{t('patternRatioDesc')}</p>
                   <PatternAnalysisChart trades={timeFilteredTrades} />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Session Performance Analysis */}
+              <div className="bg-surface rounded-xl p-6 border border-white/5 shadow-xl relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Globe className="text-primary" size={20} />
+                    <h2 className="text-lg font-semibold text-white">Analisa Performa Sesi Trading</h2>
+                  </div>
+                  <p className="text-sm text-slate-400">Rasio kemenangan (Win Rate) dan Net Profit untuk masing-masing sesi pasar (Asia, Eropa, New York).</p>
+                  <SessionAnalysisChart trades={timeFilteredTrades} />
+                </div>
+              </div>
+
+              {/* Limit Order Ratio */}
+              <div className="bg-surface rounded-xl p-6 border border-white/5 shadow-xl relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ClockIcon className="text-primary" size={20} />
+                    <h2 className="text-lg font-semibold text-white">Rasio Eksekusi Pending Order</h2>
+                  </div>
+                  <p className="text-sm text-slate-400">Perbandingan jumlah limit order yang Berhasil Tersentuh vs Kadaluwarsa vs Dibatalkan.</p>
+                  <LimitRatioChart logs={activeLogs} />
                 </div>
               </div>
             </div>

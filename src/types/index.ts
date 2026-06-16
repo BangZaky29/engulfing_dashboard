@@ -20,6 +20,7 @@ export interface TradeAnalytics {
   confidence_score?: number;
   signal_time?: string;
   notes?: string;
+  trading_session?: string | null;
 }
 
 export interface DashboardStats {
@@ -51,4 +52,18 @@ export interface EngulfingSignal {
   skip_reason?: string | null;
   notes?: string;
   created_at: string;
+  trading_session?: string | null;
+}
+
+export interface TradeActiveLog {
+  id: number;
+  ticket_id: number;
+  symbol: string;
+  mode: 'BUY' | 'SELL';
+  message: string;
+  op_price: number | null;
+  sl_price: number | null;
+  tp_price: number | null;
+  created_at: string;
+  trading_session: string | null;
 }

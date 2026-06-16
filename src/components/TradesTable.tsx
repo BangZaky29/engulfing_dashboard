@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import type { TradeAnalytics } from '../types';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
-import { ImageIcon, Filter, Clock, TrendingUp, TrendingDown, BarChart2, X } from 'lucide-react';
+import { ImageIcon, Filter, Clock, TrendingUp, TrendingDown, BarChart2, X, Globe } from 'lucide-react';
 import { useLanguage } from '../lib/i18n';
 
 interface TradesTableProps {
@@ -16,6 +16,7 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
   const [filterResult, setFilterResult] = useState<string>('ALL');
   const [filterSymbol, setFilterSymbol] = useState<string>('ALL');
   const [filterGrade, setFilterGrade] = useState<string>('ALL');
+  const [filterSession, setFilterSession] = useState<string>('ALL');
   const [filterDate, setFilterDate] = useState<string>('');
   const [filterTimeFrom, setFilterTimeFrom] = useState<string>('');
   const [filterTimeTo, setFilterTimeTo] = useState<string>('');
@@ -34,6 +35,7 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
       const matchMode = filterMode === 'ALL' || trade.mode === filterMode;
       const matchResult = filterResult === 'ALL' || trade.result === filterResult;
       const matchSymbol = filterSymbol === 'ALL' || trade.symbol === filterSymbol;
+      const matchSession = filterSession === 'ALL' || (trade.trading_session && trade.trading_session.toLowerCase().includes(filterSession.toLowerCase()));
 
       let tradeGrade = '-';
       try {
@@ -59,9 +61,9 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
         if (filterTimeTo && tradeHHmm > filterTimeTo) matchTime = false;
       }
 
-      return matchMode && matchResult && matchSymbol && matchGrade && matchDate && matchTime;
+      return matchMode && matchResult && matchSymbol && matchGrade && matchDate && matchTime && matchSession;
     });
-  }, [trades, filterMode, filterResult, filterSymbol, filterGrade, filterDate, filterTimeFrom, filterTimeTo]);
+  }, [trades, filterMode, filterResult, filterSymbol, filterGrade, filterSession, filterDate, filterTimeFrom, filterTimeTo]);
 
   // Cek apakah ada filter aktif
   const isAnyFilterActive =
@@ -69,6 +71,7 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
     filterResult !== 'ALL' ||
     filterSymbol !== 'ALL' ||
     filterGrade !== 'ALL' ||
+    filterSession !== 'ALL' ||
     filterDate !== '' ||
     filterTimeFrom !== '' ||
     filterTimeTo !== '';
@@ -80,7 +83,6 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
     const lossCount = filteredTrades.filter((t) => t.result === 'LOSS').length;
     const winRate = total > 0 ? (profitCount / total) * 100 : 0;
     const netProfit = filteredTrades.reduce((sum, t) => sum + (t.profit ?? 0), 0);
-    // Jumlah moneter profit dan loss
     const totalProfitSum = filteredTrades
       .filter((t) => t.result === 'PROFIT')
       .reduce((sum, t) => sum + (t.profit ?? 0), 0);
@@ -97,6 +99,7 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
     if (filterResult !== 'ALL') parts.push(filterResult);
     if (filterSymbol !== 'ALL') parts.push(filterSymbol);
     if (filterGrade !== 'ALL') parts.push(`Grade ${filterGrade}`);
+    if (filterSession !== 'ALL') parts.push(`Sesi ${filterSession}`);
     if (filterDate) {
       let datePart = filterDate;
       if (filterTimeFrom || filterTimeTo) {
@@ -105,12 +108,12 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
       parts.push(datePart);
     }
     return parts.join(' · ');
-  }, [filterMode, filterResult, filterSymbol, filterGrade, filterDate, filterTimeFrom, filterTimeTo]);
+  }, [filterMode, filterResult, filterSymbol, filterGrade, filterSession, filterDate, filterTimeFrom, filterTimeTo]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterMode, filterResult, filterSymbol, filterGrade, filterDate, filterTimeFrom, filterTimeTo, trades]);
+  }, [filterMode, filterResult, filterSymbol, filterGrade, filterSession, filterDate, filterTimeFrom, filterTimeTo, trades]);
 
   // Clear jam filter
   const clearTimeFilter = () => {
@@ -170,6 +173,18 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
             ))}
           </select>
 
+          {/* Filter Session */}
+          <select
+            value={filterSession}
+            onChange={(e) => setFilterSession(e.target.value)}
+            className="bg-slate-800 border border-slate-700 text-sm rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-primary"
+          >
+            <option value="ALL">Semua Sesi</option>
+            <option value="Asia">Sesi Asia</option>
+            <option value="Euro">Sesi Eropa (London)</option>
+            <option value="NY">Sesi Amerika (New York)</option>
+          </select>
+
           {/* Filter Grade */}
           <select
             value={filterGrade}
@@ -184,6 +199,7 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
             <option value="C+">Grade C+</option>
             <option value="C">Grade C</option>
             <option value="D">Grade D</option>
+            <option value="N/A">Grade N/A (Strategy B)</option>
           </select>
 
           {/* Date Picker Filter */}
@@ -193,7 +209,6 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
               value={filterDate}
               onChange={(e) => {
                 setFilterDate(e.target.value);
-                // Reset jam jika tanggal di-clear
                 if (!e.target.value) {
                   clearTimeFilter();
                 }
@@ -215,7 +230,7 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
             )}
           </div>
 
-          {/* ── Filter Jam (muncul hanya jika tanggal aktif) ── */}
+          {/* Filter Jam */}
           {filterDate && (
             <div className="flex items-center gap-2 border-l border-slate-700 pl-3">
               <Clock size={14} className="text-primary shrink-0" />
@@ -259,7 +274,6 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
             'border-l-4 border-l-primary'
           )}
         >
-          {/* Subtle glow top */}
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
 
           <div className="px-4 py-3 space-y-3">
@@ -279,7 +293,7 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
               </span>
             </div>
 
-            {/* Stats Grid — Row 1: Jumlah Trade */}
+            {/* Stats Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {/* Total Trades */}
               <div className="bg-slate-700/40 rounded-lg px-3 py-2.5 border border-slate-600/30">
@@ -324,9 +338,9 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
             {/* Divider */}
             <div className="h-px bg-slate-700/50" />
 
-            {/* Stats Grid — Row 2: Kalkulasi Uang */}
+            {/* Stats Grid — Row 2 */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* Total Profit (uang) */}
+              {/* Total Profit */}
               <div className="bg-green-500/10 rounded-lg px-4 py-3 border border-green-500/20">
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <TrendingUp size={11} className="text-success" />
@@ -338,7 +352,7 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
                 <p className="text-[10px] text-muted mt-1">{filterSummaryStats.profitCount} trade menang</p>
               </div>
 
-              {/* Total Loss (uang) */}
+              {/* Total Loss */}
               <div className="bg-red-500/10 rounded-lg px-4 py-3 border border-red-500/20">
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <TrendingDown size={11} className="text-danger" />
@@ -350,7 +364,7 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
                 <p className="text-[10px] text-muted mt-1">{filterSummaryStats.lossCount} trade kalah</p>
               </div>
 
-              {/* Total Bersih = Net Profit */}
+              {/* Total Bersih */}
               <div
                 className={cn(
                   'rounded-lg px-4 py-3 border',
@@ -386,16 +400,16 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
       {/* ── Table ── */}
       <div className="bg-card rounded-xl border border-slate-700/50 shadow-lg overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[340px] md:min-w-full">
+          <table className="w-full text-left border-collapse min-w-[500px] md:min-w-full">
             <thead>
               <tr className="bg-slate-800/50 text-muted border-b border-slate-700/50">
                 <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">{t('time')}</th>
                 <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">Ticket ID</th>
                 <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">{t('symbol')}</th>
                 <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">{t('mode')}</th>
+                <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">Sesi</th>
                 <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">{t('result')}</th>
                 <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">{t('profit')}</th>
-                {/* Sembunyikan kolom Entry-Exit di layar kecil (mobile) */}
                 <th className="hidden md:table-cell px-6 py-4 font-medium text-sm">{t('entryExit')}</th>
                 <th className="hidden md:table-cell px-6 py-4 font-medium text-sm">Grade & Score</th>
                 <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm text-center">{t('chart')}</th>
@@ -404,7 +418,7 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
             <tbody className="divide-y divide-slate-700/50">
               {paginatedTrades.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-muted">
+                  <td colSpan={10} className="px-6 py-8 text-center text-muted">
                     {t('noTrades')}
                   </td>
                 </tr>
@@ -437,6 +451,12 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
                         {trade.mode}
                       </span>
                     </td>
+                    <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm text-slate-300">
+                      <span className="inline-flex items-center gap-1 bg-slate-800/60 px-2 py-0.5 rounded border border-slate-700 text-xs font-mono text-slate-300">
+                        <Globe size={11} className="text-primary" />
+                        {trade.trading_session || 'Unknown'}
+                      </span>
+                    </td>
                     <td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-sm">
                       <span
                         className={cn(
@@ -457,7 +477,6 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
                         {trade.profit?.toFixed(2)}
                       </span>
                     </td>
-                    {/* Sembunyikan kolom Entry-Exit di layar kecil (mobile) */}
                     <td className="hidden md:table-cell px-6 py-4 text-xs text-muted">
                       <div>Entry: {trade.op_price}</div>
                       <div>Exit: {trade.result === 'PROFIT' ? trade.tp_price : trade.sl_price}</div>
@@ -476,6 +495,7 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
                                 g.startsWith('B') ? "bg-primary/20 text-primary" :
                                 g.startsWith('C') ? "bg-amber-400/20 text-amber-400" :
                                 g === '-' ? "bg-slate-700 text-slate-300" :
+                                g === 'N/A' ? "bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30" :
                                 "bg-danger/20 text-danger"
                               )}>{g}</span>
                               {sb && <span className="text-[9px] text-muted font-mono tracking-tight whitespace-nowrap">{sb}</span>}
