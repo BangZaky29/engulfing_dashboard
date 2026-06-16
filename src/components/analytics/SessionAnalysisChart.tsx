@@ -7,7 +7,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend
+  Legend,
+  LabelList
 } from 'recharts';
 import { 
   Globe, 
@@ -430,7 +431,7 @@ export function SessionAnalysisChart({ trades, signals = [] }: SessionAnalysisCh
             
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={sessionStats} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <BarChart data={sessionStats} margin={{ top: 25, right: 10, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                   <XAxis 
                     dataKey="key" 
@@ -452,8 +453,22 @@ export function SessionAnalysisChart({ trades, signals = [] }: SessionAnalysisCh
                     formatter={(val) => [`${val} points`]}
                   />
                   <Legend wrapperStyle={{ fontSize: '11px' }} />
-                  <Bar dataKey="avgRing" name="Rata-rata Ring (Tinggi)" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="avgBody" name="Rata-rata Body Size" fill="#fbbf24" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="avgRing" name="Rata-rata Ring (Tinggi)" fill="#3b82f6" radius={[4, 4, 0, 0]}>
+                    <LabelList 
+                      dataKey="avgRing" 
+                      position="top" 
+                      formatter={(val: any) => typeof val === 'number' && val > 0 ? `${val} pts` : val || ''} 
+                      style={{ fill: '#cbd5e1', fontSize: 10, fontWeight: 600 }} 
+                    />
+                  </Bar>
+                  <Bar dataKey="avgBody" name="Rata-rata Body Size" fill="#fbbf24" radius={[4, 4, 0, 0]}>
+                    <LabelList 
+                      dataKey="avgBody" 
+                      position="top" 
+                      formatter={(val: any) => typeof val === 'number' && val > 0 ? `${val} pts` : val || ''} 
+                      style={{ fill: '#fbbf24', fontSize: 10, fontWeight: 600 }} 
+                    />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
