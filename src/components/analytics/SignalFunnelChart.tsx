@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { TradeAnalytics, EngulfingSignal } from '../../types';
-import { Filter, ArrowDown, Activity } from 'lucide-react';
+import { Filter, Activity } from 'lucide-react';
 
 interface SignalFunnelChartProps {
   trades: TradeAnalytics[];

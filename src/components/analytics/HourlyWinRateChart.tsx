@@ -77,7 +77,7 @@ export function HourlyWinRateChart({ trades }: HourlyWinRateChartProps) {
           <Tooltip
             contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#f8fafc' }}
             itemStyle={{ color: '#f8fafc' }}
-            formatter={(value: number, name: string) => [
+            formatter={(value: any, name: any) => [
               name === 'winRate' ? `${value.toFixed(1)}%` : value,
               name === 'winRate' ? 'Win Rate' : name === 'wins' ? 'Wins' : 'Losses'
             ]}

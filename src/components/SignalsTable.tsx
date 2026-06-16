@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import type { EngulfingSignal } from '../types';
 import { format } from 'date-fns';
 import { cn } from '../lib/utils';
-import { Filter, CheckCircle, AlertTriangle, ArrowUpRight, ArrowDownRight, Clock, HelpCircle, X } from 'lucide-react';
+import { Filter, CheckCircle, AlertTriangle, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
 interface SignalsTableProps {
   signals: EngulfingSignal[];

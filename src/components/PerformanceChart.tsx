@@ -112,7 +112,7 @@ export function PerformanceChart({ trades }: PerformanceChartProps) {
               }}
               itemStyle={{ color: '#38bdf8' }}
               labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
-              formatter={(value: number) => [
+              formatter={(value: any) => [
                 <span style={{ color: value >= 0 ? '#38bdf8' : '#ef4444' }}>
                   {`$${value}`}
                 </span>,
