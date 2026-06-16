@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { TradeActiveLog } from '../types';
 import { format } from 'date-fns';
-import { cn } from '../lib/utils';
+import { cn, getSessionGroup } from '../lib/utils';
 import { Filter, CheckCircle, ArrowUpRight, ArrowDownRight, Globe, Trash2, Clock } from 'lucide-react';
 
 interface ActiveLogsTableProps {
@@ -49,7 +49,7 @@ export function ActiveLogsTable({ logs }: ActiveLogsTableProps) {
     return parsedLogs.filter((log) => {
       const matchSymbol = filterSymbol === 'ALL' || log.symbol === filterSymbol;
       const matchDirection = filterDirection === 'ALL' || log.mode === filterDirection;
-      const matchSession = filterSession === 'ALL' || (log.trading_session && log.trading_session.toLowerCase().includes(filterSession.toLowerCase()));
+      const matchSession = filterSession === 'ALL' || getSessionGroup(log) === filterSession;
       
       let matchStatus = true;
       if (filterStatus !== 'ALL') {
@@ -124,9 +124,16 @@ export function ActiveLogsTable({ logs }: ActiveLogsTableProps) {
             className="bg-slate-800 border border-slate-700 text-sm rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-primary"
           >
             <option value="ALL">Semua Sesi</option>
-            <option value="Asia">Sesi Asia</option>
-            <option value="Euro">Sesi Eropa (London)</option>
-            <option value="NY">Sesi Amerika (New York)</option>
+            <optgroup label="Sesi Utama (Aktif)">
+              <option value="Asia">Sesi Asia (07:00 - 14:00)</option>
+              <option value="Euro">Sesi Eropa (16:00 - 19:00)</option>
+              <option value="NY">Sesi New York (23:00 - 04:00)</option>
+            </optgroup>
+            <optgroup label="Sesi Overlap & Lainnya">
+              <option value="Asia/Euro">Overlap Asia/Eropa (14:00 - 16:00)</option>
+              <option value="Euro/NY">Overlap Eropa/NY (19:00 - 23:00)</option>
+              <option value="Off-Market">Off-Market / Lainnya (04:00 - 07:00)</option>
+            </optgroup>
           </select>
         </div>
       </div>

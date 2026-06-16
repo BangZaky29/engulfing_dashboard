@@ -274,20 +274,20 @@ function App() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Session Performance Analysis */}
-              <div className="bg-surface rounded-xl p-6 border border-white/5 shadow-xl relative overflow-hidden group">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <div className="relative z-10">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Globe className="text-primary" size={20} />
-                    <h2 className="text-lg font-semibold text-white">Analisa Performa Sesi Trading</h2>
-                  </div>
-                  <p className="text-sm text-slate-400">Rasio kemenangan (Win Rate) dan Net Profit untuk masing-masing sesi pasar (Asia, Eropa, New York).</p>
-                  <SessionAnalysisChart trades={timeFilteredTrades} />
+            {/* Session Performance Analysis (Full Width) */}
+            <div className="bg-surface rounded-xl p-6 border border-white/5 shadow-xl relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-2">
+                  <Globe className="text-primary" size={20} />
+                  <h2 className="text-lg font-semibold text-white">Analisa Performa Sesi Trading</h2>
                 </div>
+                <p className="text-sm text-slate-400">Rasio kemenangan (Win Rate), volume transaksi, dan Net Profit untuk masing-masing sesi pasar serta zona overlap.</p>
+                <SessionAnalysisChart trades={timeFilteredTrades} signals={signals} />
               </div>
+            </div>
 
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Limit Order Ratio */}
               <div className="bg-surface rounded-xl p-6 border border-white/5 shadow-xl relative overflow-hidden group">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -300,23 +300,7 @@ function App() {
                   <LimitRatioChart logs={activeLogs} />
                 </div>
               </div>
-            </div>
 
-            {/* Grade Analysis */}
-            <div className="bg-surface rounded-xl p-6 border border-white/5 shadow-xl relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-2">
-                  <Award className="text-primary" size={20} />
-                  <h2 className="text-lg font-semibold text-white">Analisa Performa berdasarkan Grade</h2>
-                </div>
-                <p className="text-sm text-slate-400">Distribusi persentase kemenangan (Win Rate) dan total keuntungan bersih untuk masing-masing kelompok Grade.</p>
-                <GradeAnalysisChart trades={timeFilteredTrades} />
-              </div>
-            </div>
-
-            {/* New Grid for Funnel and Holding Time */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Signal Funnel */}
               <div className="bg-surface rounded-xl p-6 border border-white/5 shadow-xl relative overflow-hidden group">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -331,18 +315,31 @@ function App() {
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Holding Time */}
-              <div className="bg-surface rounded-xl p-6 border border-white/5 shadow-xl relative overflow-hidden group">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <div className="relative z-10">
-                  <div className="flex items-center gap-2 mb-2">
-                    <ClockIcon className="text-primary" size={20} />
-                    <h2 className="text-lg font-semibold text-white">Analisa Waktu Tahan (Holding Time)</h2>
-                  </div>
-                  <p className="text-sm text-slate-400">Distribusi durasi floating (dari OP sampai Close) dibandingkan dengan hasil Profit/Loss.</p>
-                  <HoldingTimeChart trades={timeFilteredTrades} />
+            {/* Holding Time Analysis (Full Width) */}
+            <div className="bg-surface rounded-xl p-6 border border-white/5 shadow-xl relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-2">
+                  <ClockIcon className="text-primary" size={20} />
+                  <h2 className="text-lg font-semibold text-white">Analisa Waktu Tahan (Holding Time)</h2>
                 </div>
+                <p className="text-sm text-slate-400">Distribusi durasi floating (dari OP sampai Close) dibandingkan dengan hasil Profit/Loss.</p>
+                <HoldingTimeChart trades={timeFilteredTrades} />
+              </div>
+            </div>
+
+            {/* Grade Analysis */}
+            <div className="bg-surface rounded-xl p-6 border border-white/5 shadow-xl relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-2">
+                  <Award className="text-primary" size={20} />
+                  <h2 className="text-lg font-semibold text-white">Analisa Performa berdasarkan Grade</h2>
+                </div>
+                <p className="text-sm text-slate-400">Distribusi persentase kemenangan (Win Rate) dan total keuntungan bersih untuk masing-masing kelompok Grade.</p>
+                <GradeAnalysisChart trades={timeFilteredTrades} />
               </div>
             </div>
 

@@ -21,6 +21,17 @@ export interface TradeAnalytics {
   signal_time?: string;
   notes?: string;
   trading_session?: string | null;
+  exit_price?: number | null;
+  trade_volume?: number | null;
+  prev_open?: number;
+  prev_close?: number;
+  prev_high?: number;
+  prev_low?: number;
+  curr_open?: number;
+  curr_close?: number;
+  curr_high?: number;
+  curr_low?: number;
+  signal_volume?: number | null;
 }
 
 export interface DashboardStats {
@@ -53,6 +64,16 @@ export interface EngulfingSignal {
   notes?: string;
   created_at: string;
   trading_session?: string | null;
+  exit_price?: number | null;
+  volume?: number | null;
+  prev_open?: number;
+  prev_close?: number;
+  prev_high?: number;
+  prev_low?: number;
+  curr_open?: number;
+  curr_close?: number;
+  curr_high?: number;
+  curr_low?: number;
 }
 
 export interface TradeActiveLog {

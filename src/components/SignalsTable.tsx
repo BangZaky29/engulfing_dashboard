@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { EngulfingSignal } from '../types';
 import { format } from 'date-fns';
-import { cn } from '../lib/utils';
+import { cn, getSessionGroup } from '../lib/utils';
 import { Filter, CheckCircle, AlertTriangle, ArrowUpRight, ArrowDownRight, Globe, Shield } from 'lucide-react';
 
 interface SignalsTableProps {
@@ -67,7 +67,7 @@ export function SignalsTable({ signals }: SignalsTableProps) {
       const matchSymbol = filterSymbol === 'ALL' || sig.symbol === filterSymbol;
       const matchDirection = filterDirection === 'ALL' || sig.direction === filterDirection;
       const matchGrade = filterGrade === 'ALL' || sig.grade === filterGrade;
-      const matchSession = filterSession === 'ALL' || (sig.trading_session && sig.trading_session.toLowerCase().includes(filterSession.toLowerCase()));
+      const matchSession = filterSession === 'ALL' || getSessionGroup(sig) === filterSession;
       
       let matchStrategy = true;
       if (filterStrategy === 'FILTER_A') {
@@ -150,9 +150,16 @@ export function SignalsTable({ signals }: SignalsTableProps) {
             className="bg-slate-800 border border-slate-700 text-sm rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-primary"
           >
             <option value="ALL">Semua Sesi</option>
-            <option value="Asia">Sesi Asia</option>
-            <option value="Euro">Sesi Eropa (London)</option>
-            <option value="NY">Sesi Amerika (New York)</option>
+            <optgroup label="Sesi Utama (Aktif)">
+              <option value="Asia">Sesi Asia (07:00 - 14:00)</option>
+              <option value="Euro">Sesi Eropa (16:00 - 19:00)</option>
+              <option value="NY">Sesi New York (23:00 - 04:00)</option>
+            </optgroup>
+            <optgroup label="Sesi Overlap & Lainnya">
+              <option value="Asia/Euro">Overlap Asia/Eropa (14:00 - 16:00)</option>
+              <option value="Euro/NY">Overlap Eropa/NY (19:00 - 23:00)</option>
+              <option value="Off-Market">Off-Market / Lainnya (04:00 - 07:00)</option>
+            </optgroup>
           </select>
 
           {/* Filter Strategy */}
