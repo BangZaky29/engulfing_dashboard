@@ -87,4 +87,5 @@ export interface TradeActiveLog {
   tp_price: number | null;
   created_at: string;
   trading_session: string | null;
+  image_url?: string | null;
 }

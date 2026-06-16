@@ -239,7 +239,7 @@ function App() {
               <h2 className="text-2xl font-bold text-white mb-2">Riwayat Pending Order (Limit Order)</h2>
               <p className="text-slate-400">Daftar lengkap status seluruh limit order yang pernah dikirim ke MT5, termasuk yang sukses tersentuh (filled), kadaluwarsa (expired), atau dibatalkan karena override.</p>
             </div>
-            <ActiveLogsTable logs={activeLogs} />
+            <ActiveLogsTable logs={activeLogs} onImageClick={setSelectedImage} />
           </div>
         )}
 

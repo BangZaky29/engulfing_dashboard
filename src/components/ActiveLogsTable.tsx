@@ -2,13 +2,14 @@ import { useState, useMemo, useEffect } from 'react';
 import type { TradeActiveLog } from '../types';
 import { format } from 'date-fns';
 import { cn, getSessionGroup } from '../lib/utils';
-import { Filter, CheckCircle, ArrowUpRight, ArrowDownRight, Globe, Trash2, Clock } from 'lucide-react';
+import { Filter, CheckCircle, ArrowUpRight, ArrowDownRight, Globe, Trash2, Clock, ImageIcon } from 'lucide-react';
 
 interface ActiveLogsTableProps {
   logs: TradeActiveLog[];
+  onImageClick: (url: string) => void;
 }
 
-export function ActiveLogsTable({ logs }: ActiveLogsTableProps) {
+export function ActiveLogsTable({ logs, onImageClick }: ActiveLogsTableProps) {
   const [filterSymbol, setFilterSymbol] = useState<string>('ALL');
   const [filterDirection, setFilterDirection] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
@@ -152,12 +153,13 @@ export function ActiveLogsTable({ logs }: ActiveLogsTableProps) {
                 <th className="px-6 py-4 font-medium text-sm">Rancangan Harga</th>
                 <th className="px-6 py-4 font-medium text-sm">Status Hasil</th>
                 <th className="px-6 py-4 font-medium text-sm">Catatan Sistem</th>
+                <th className="px-6 py-4 font-medium text-sm text-center">Chart</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/50">
               {paginatedLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-8 text-center text-muted">
+                  <td colSpan={9} className="px-6 py-8 text-center text-muted">
                     Tidak ada riwayat pending order yang cocok dengan filter.
                   </td>
                 </tr>
@@ -238,6 +240,19 @@ export function ActiveLogsTable({ logs }: ActiveLogsTableProps) {
                     {/* Catatan Sistem */}
                     <td className="px-6 py-4 text-xs text-slate-400 max-w-[250px] truncate" title={log.message}>
                       {log.message}
+                    </td>
+
+                    {/* Screenshot Chart */}
+                    <td className="px-6 py-4 text-center">
+                      {log.image_url && (
+                        <button
+                          onClick={() => onImageClick(log.image_url!)}
+                          className="text-primary hover:text-primary/80 transition-colors inline-flex items-center justify-center p-1.5 rounded-lg hover:bg-primary/10"
+                          title="View Screenshot"
+                        >
+                          <ImageIcon size={16} />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))
