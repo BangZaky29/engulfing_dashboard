@@ -20,11 +20,12 @@ import {
   Layers
 } from 'lucide-react';
 import type { TradeAnalytics, EngulfingSignal } from '../../types';
-import { getSessionGroup } from '../../lib/utils';
+import { getSessionGroup, getSummerFlag } from '../../lib/utils';
 
 interface SessionAnalysisChartProps {
   trades: TradeAnalytics[];
   signals?: EngulfingSignal[];
+  dstMode: 'auto' | 'summer' | 'winter';
 }
 
 // Helper to determine point size based on symbol name and reference price
@@ -40,7 +41,8 @@ const getPointMultiplier = (symbol: string, price: number): number => {
 // Suffix formatting
 const formatNumber = (num: number, dec = 1) => num.toLocaleString('id-ID', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 
-export function SessionAnalysisChart({ trades, signals = [] }: SessionAnalysisChartProps) {
+export function SessionAnalysisChart({ trades, signals = [], dstMode }: SessionAnalysisChartProps) {
+  const isSummer = useMemo(() => getSummerFlag(dstMode), [dstMode]);
   const [capitalInput, setCapitalInput] = useState<string>(() => {
     return localStorage.getItem('session_analysis_capital') || '10000';
   });
@@ -57,13 +59,13 @@ export function SessionAnalysisChart({ trades, signals = [] }: SessionAnalysisCh
 
   // Session Definition
   const sessionsDef = useMemo(() => [
-    { key: 'Asia', name: 'Sesi Asia', time: '07:00 - 14:00 WIB', color: '#fbbf24', emoji: '🌅' },
-    { key: 'Asia/Euro', name: 'Overlap Asia/Euro', time: '14:00 - 16:00 WIB', color: '#f59e0b', emoji: '🌅/🏰' },
-    { key: 'Euro', name: 'Sesi Eropa (London)', time: '16:00 - 19:00 WIB', color: '#3b82f6', emoji: '🏰' },
-    { key: 'Euro/NY', name: 'Overlap Euro/NY', time: '19:00 - 23:00 WIB', color: '#8b5cf6', emoji: '🎆' },
-    { key: 'NY', name: 'Sesi New York', time: '23:00 - 04:00 WIB', color: '#10b981', emoji: '🗽' },
-    { key: 'Off-Market', name: 'Off-Market / Lainnya', time: '04:00 - 07:00 WIB', color: '#64748b', emoji: '🌙' }
-  ], []);
+    { key: 'Asia Only', name: 'Asia Only', time: isSummer ? '07:00 - 14:00 WIB' : '07:00 - 15:00 WIB', color: '#fbbf24', emoji: '🌅' },
+    { key: 'Asia x Europe Overlap', name: 'Asia x Europe Overlap', time: isSummer ? '14:00 - 16:00 WIB' : '15:00 - 16:00 WIB', color: '#f59e0b', emoji: '🌅/🏰' },
+    { key: 'Europe Only', name: 'Europe Only', time: isSummer ? '16:00 - 19:00 WIB' : '16:00 - 20:00 WIB', color: '#3b82f6', emoji: '🏰' },
+    { key: 'Europe x New York Overlap', name: 'Europe x New York Overlap', time: isSummer ? '19:00 - 23:00 WIB' : '20:00 - 00:00 WIB', color: '#8b5cf6', emoji: '🎆' },
+    { key: 'New York Only', name: 'New York Only', time: isSummer ? '23:00 - 04:00 WIB' : '00:00 - 05:00 WIB', color: '#10b981', emoji: '🗽' },
+    { key: 'Off / Low Liquidity', name: 'Off / Low Liquidity', time: isSummer ? '04:00 - 07:00 WIB' : '05:00 - 07:00 WIB', color: '#64748b', emoji: '🌙' }
+  ], [isSummer]);
 
   // Compile detailed session stats
   const sessionStats = useMemo(() => {
@@ -114,7 +116,7 @@ export function SessionAnalysisChart({ trades, signals = [] }: SessionAnalysisCh
 
     // 1. Process all signals to get Triggers & Volatility Characteristics
     signals.forEach(sig => {
-      const sGroup = getSessionGroup(sig);
+      const sGroup = getSessionGroup(sig, dstMode);
       if (!map[sGroup]) return;
 
       const target = map[sGroup];
@@ -153,7 +155,7 @@ export function SessionAnalysisChart({ trades, signals = [] }: SessionAnalysisCh
 
     // 2. Process all executed trades to get Win/Loss, Profits & Overlap performance
     trades.forEach(trade => {
-      const sGroup = getSessionGroup(trade);
+      const sGroup = getSessionGroup(trade, dstMode);
       if (!map[sGroup]) return;
 
       const target = map[sGroup];

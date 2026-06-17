@@ -1,17 +1,19 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { TradeAnalytics } from '../types';
 import { format } from 'date-fns';
-import { cn, getSessionGroup } from '../lib/utils';
+import { cn, getSessionGroup, getSummerFlag } from '../lib/utils';
 import { ImageIcon, Filter, Clock, TrendingUp, TrendingDown, BarChart2, X, Globe } from 'lucide-react';
 import { useLanguage } from '../lib/i18n';
 
 interface TradesTableProps {
   trades: TradeAnalytics[];
   onImageClick: (url: string) => void;
+  dstMode: 'auto' | 'summer' | 'winter';
 }
 
-export function TradesTable({ trades, onImageClick }: TradesTableProps) {
+export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps) {
   const { t } = useLanguage();
+  const isSummer = getSummerFlag(dstMode);
   const [filterMode, setFilterMode] = useState<string>('ALL');
   const [filterResult, setFilterResult] = useState<string>('ALL');
   const [filterSymbol, setFilterSymbol] = useState<string>('ALL');
@@ -35,7 +37,7 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
       const matchMode = filterMode === 'ALL' || trade.mode === filterMode;
       const matchResult = filterResult === 'ALL' || trade.result === filterResult;
       const matchSymbol = filterSymbol === 'ALL' || trade.symbol === filterSymbol;
-      const matchSession = filterSession === 'ALL' || getSessionGroup(trade) === filterSession;
+      const matchSession = filterSession === 'ALL' || getSessionGroup(trade, dstMode) === filterSession;
 
       let tradeGrade = '-';
       try {
@@ -180,15 +182,15 @@ export function TradesTable({ trades, onImageClick }: TradesTableProps) {
             className="bg-slate-800 border border-slate-700 text-sm rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-primary"
           >
             <option value="ALL">Semua Sesi</option>
-            <optgroup label="Sesi Utama (Aktif)">
-              <option value="Asia">Sesi Asia (07:00 - 14:00)</option>
-              <option value="Euro">Sesi Eropa (16:00 - 19:00)</option>
-              <option value="NY">Sesi New York (23:00 - 04:00)</option>
+            <optgroup label="Sesi Utama (Aktif Only)">
+              <option value="Asia Only">Asia Only {isSummer ? '(07:00 - 14:00)' : '(07:00 - 15:00)'}</option>
+              <option value="Europe Only">Europe Only {isSummer ? '(16:00 - 19:00)' : '(16:00 - 20:00)'}</option>
+              <option value="New York Only">New York Only {isSummer ? '(23:00 - 04:00)' : '(00:00 - 05:00)'}</option>
             </optgroup>
             <optgroup label="Sesi Overlap & Lainnya">
-              <option value="Asia/Euro">Overlap Asia/Eropa (14:00 - 16:00)</option>
-              <option value="Euro/NY">Overlap Eropa/NY (19:00 - 23:00)</option>
-              <option value="Off-Market">Off-Market / Lainnya (04:00 - 07:00)</option>
+              <option value="Asia x Europe Overlap">Asia x Europe Overlap {isSummer ? '(14:00 - 16:00)' : '(15:00 - 16:00)'}</option>
+              <option value="Europe x New York Overlap">Europe x New York Overlap {isSummer ? '(19:00 - 23:00)' : '(20:00 - 00:00)'}</option>
+              <option value="Off / Low Liquidity">Off / Low Liquidity {isSummer ? '(04:00 - 07:00)' : '(05:00 - 07:00)'}</option>
             </optgroup>
           </select>
 

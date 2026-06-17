@@ -32,6 +32,15 @@ function App() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('ALL');
   const [activeTab, setActiveTab] = useState<Tab>('OVERVIEW');
+  const [dstMode, setDstMode] = useState<'auto' | 'summer' | 'winter'>(() => {
+    const saved = localStorage.getItem('dst_mode') || 'auto';
+    return (saved === 'auto' || saved === 'summer' || saved === 'winter') ? saved : 'auto';
+  });
+
+  const handleDstModeChange = (mode: 'auto' | 'summer' | 'winter') => {
+    setDstMode(mode);
+    localStorage.setItem('dst_mode', mode);
+  };
 
   // Filter trades based on global time filter
   const timeFilteredTrades = useMemo(() => {
@@ -80,6 +89,23 @@ function App() {
               <Globe size={16} />
               {language === 'en' ? 'ID' : 'EN'}
             </button>
+
+            {/* DST Mode Dropdown */}
+            <div className="flex items-center bg-slate-800 rounded-lg border border-slate-700 p-1 flex-1 md:flex-none">
+              <div className="pl-2 pr-1 text-muted hidden md:block">
+                <ClockIcon size={16} />
+              </div>
+              <select
+                value={dstMode}
+                onChange={(e) => handleDstModeChange(e.target.value as 'auto' | 'summer' | 'winter')}
+                className="bg-transparent text-sm w-full md:w-auto px-2 py-1.5 text-slate-200 focus:outline-none"
+                title="DST Mode"
+              >
+                <option value="auto">Auto DST</option>
+                <option value="summer">Summer / DST</option>
+                <option value="winter">Winter / Non-DST</option>
+              </select>
+            </div>
             {/* Global Time Filter Dropdown */}
             <div className="flex items-center bg-slate-800 rounded-lg border border-slate-700 p-1 flex-1 md:flex-none">
               <div className="pl-2 pr-1 text-muted hidden md:block">
@@ -216,7 +242,7 @@ function App() {
 
             <div className="space-y-4">
               <h3 className="text-xl font-semibold text-white">{t('recentTrades')}</h3>
-              <TradesTable trades={timeFilteredTrades} onImageClick={setSelectedImage} />
+              <TradesTable trades={timeFilteredTrades} onImageClick={setSelectedImage} dstMode={dstMode} />
             </div>
           </div>
         )}
@@ -228,7 +254,7 @@ function App() {
               <h2 className="text-2xl font-bold text-white mb-2">Riwayat Trigger & Sinyal</h2>
               <p className="text-slate-400">Daftar lengkap seluruh trigger engulfing yang dideteksi scanner, baik yang dieksekusi maupun yang dibatalkan (dilewati) oleh filter.</p>
             </div>
-            <SignalsTable signals={signals} />
+            <SignalsTable signals={signals} dstMode={dstMode} />
           </div>
         )}
 
@@ -239,7 +265,7 @@ function App() {
               <h2 className="text-2xl font-bold text-white mb-2">Riwayat Pending Order (Limit Order)</h2>
               <p className="text-slate-400">Daftar lengkap status seluruh limit order yang pernah dikirim ke MT5, termasuk yang sukses tersentuh (filled), kadaluwarsa (expired), atau dibatalkan karena override.</p>
             </div>
-            <ActiveLogsTable logs={activeLogs} onImageClick={setSelectedImage} />
+            <ActiveLogsTable logs={activeLogs} onImageClick={setSelectedImage} dstMode={dstMode} />
           </div>
         )}
 
@@ -283,7 +309,7 @@ function App() {
                   <h2 className="text-lg font-semibold text-white">Analisa Performa Sesi Trading</h2>
                 </div>
                 <p className="text-sm text-slate-400">Rasio kemenangan (Win Rate), volume transaksi, dan Net Profit untuk masing-masing sesi pasar serta zona overlap.</p>
-                <SessionAnalysisChart trades={timeFilteredTrades} signals={signals} />
+                <SessionAnalysisChart trades={timeFilteredTrades} signals={signals} dstMode={dstMode} />
               </div>
             </div>
 

@@ -1,19 +1,29 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { TradeActiveLog } from '../types';
 import { format } from 'date-fns';
-import { cn, getSessionGroup } from '../lib/utils';
-import { Filter, CheckCircle, ArrowUpRight, ArrowDownRight, Globe, Trash2, Clock, ImageIcon } from 'lucide-react';
+import { cn, getSessionGroup, getSummerFlag } from '../lib/utils';
+import { Filter, CheckCircle, ArrowUpRight, ArrowDownRight, Globe, Trash2, Clock, ImageIcon, X } from 'lucide-react';
 
 interface ActiveLogsTableProps {
   logs: TradeActiveLog[];
   onImageClick: (url: string) => void;
+  dstMode: 'auto' | 'summer' | 'winter';
 }
 
-export function ActiveLogsTable({ logs, onImageClick }: ActiveLogsTableProps) {
+export function ActiveLogsTable({ logs, onImageClick, dstMode }: ActiveLogsTableProps) {
+  const isSummer = getSummerFlag(dstMode);
   const [filterSymbol, setFilterSymbol] = useState<string>('ALL');
   const [filterDirection, setFilterDirection] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [filterSession, setFilterSession] = useState<string>('ALL');
+  const [filterDate, setFilterDate] = useState<string>('');
+  const [filterTimeFrom, setFilterTimeFrom] = useState<string>('');
+  const [filterTimeTo, setFilterTimeTo] = useState<string>('');
+  
+  const clearTimeFilter = () => {
+    setFilterTimeFrom('');
+    setFilterTimeTo('');
+  };
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -50,21 +60,69 @@ export function ActiveLogsTable({ logs, onImageClick }: ActiveLogsTableProps) {
     return parsedLogs.filter((log) => {
       const matchSymbol = filterSymbol === 'ALL' || log.symbol === filterSymbol;
       const matchDirection = filterDirection === 'ALL' || log.mode === filterDirection;
-      const matchSession = filterSession === 'ALL' || getSessionGroup(log) === filterSession;
+      const matchSession = filterSession === 'ALL' || getSessionGroup(log, dstMode) === filterSession;
       
       let matchStatus = true;
       if (filterStatus !== 'ALL') {
         matchStatus = log.status === filterStatus;
       }
 
-      return matchSymbol && matchDirection && matchSession && matchStatus;
+      let matchDate = true;
+      if (filterDate) {
+        const logDateStr = new Date(log.created_at).toISOString().split('T')[0];
+        matchDate = logDateStr === filterDate;
+      }
+
+      let matchTime = true;
+      if (filterDate && (filterTimeFrom || filterTimeTo)) {
+        const logHHmm = format(new Date(log.created_at), 'HH:mm');
+        if (filterTimeFrom && logHHmm < filterTimeFrom) matchTime = false;
+        if (filterTimeTo && logHHmm > filterTimeTo) matchTime = false;
+      }
+
+      return matchSymbol && matchDirection && matchSession && matchStatus && matchDate && matchTime;
     });
-  }, [parsedLogs, filterSymbol, filterDirection, filterSession, filterStatus]);
+  }, [parsedLogs, filterSymbol, filterDirection, filterSession, filterStatus, filterDate, filterTimeFrom, filterTimeTo]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterSymbol, filterDirection, filterSession, filterStatus, logs]);
+  }, [filterSymbol, filterDirection, filterSession, filterStatus, filterDate, filterTimeFrom, filterTimeTo, logs]);
+
+  const stats = useMemo(() => {
+    const total = filteredLogs.length;
+    const filled = filteredLogs.filter(l => l.status === 'FILED').length;
+    const expired = filteredLogs.filter(l => l.status === 'EXPIRED').length;
+    const overridden = filteredLogs.filter(l => l.status === 'OVERRIDDEN').length;
+    
+    const fillRate = total > 0 ? (filled / total) * 100 : 0;
+    const expireRate = total > 0 ? (expired / total) * 100 : 0;
+    const overrideRate = total > 0 ? (overridden / total) * 100 : 0;
+    
+    const buys = filteredLogs.filter(l => l.mode === 'BUY');
+    const buyTotal = buys.length;
+    const buyFilled = buys.filter(l => l.status === 'FILED').length;
+    const buyFillRate = buyTotal > 0 ? (buyFilled / buyTotal) * 100 : 0;
+    
+    const sells = filteredLogs.filter(l => l.mode === 'SELL');
+    const sellTotal = sells.length;
+    const sellFilled = sells.filter(l => l.status === 'FILED').length;
+    const sellFillRate = sellTotal > 0 ? (sellFilled / sellTotal) * 100 : 0;
+    
+    return {
+      total,
+      filled,
+      expired,
+      overridden,
+      fillRate,
+      expireRate,
+      overrideRate,
+      buyTotal,
+      buyFillRate,
+      sellTotal,
+      sellFillRate
+    };
+  }, [filteredLogs]);
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
@@ -75,6 +133,65 @@ export function ActiveLogsTable({ logs, onImageClick }: ActiveLogsTableProps) {
 
   return (
     <div className="space-y-4">
+      {/* Summary Analytics Panel */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Total Limit Order */}
+        <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-between shadow-md">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Total Limit Order</span>
+            <span className="text-2xl font-black text-white mt-1 block">{stats.total}</span>
+          </div>
+          <p className="text-[10px] text-slate-500 mt-2">Seluruh pending limit order yang pernah dikirim ke MT5</p>
+        </div>
+
+        {/* Fill Rate */}
+        <div className="bg-green-500/5 border border-green-500/20 rounded-xl p-4 flex flex-col justify-between shadow-md">
+          <div className="flex justify-between items-start">
+            <div>
+              <span className="text-[10px] text-green-400 font-semibold uppercase tracking-wider block">Fill Rate (Terisi)</span>
+              <span className="text-2xl font-black text-green-400 mt-1 block">{stats.filled}</span>
+            </div>
+            <span className="bg-green-500/10 text-green-400 text-xs px-2 py-0.5 rounded-full font-bold">
+              {stats.fillRate.toFixed(1)}%
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-500 mt-2">Order limit yang berhasil tersentuh harga pasar</p>
+        </div>
+
+        {/* Expired vs Batal */}
+        <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-between shadow-md">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Expired vs Override</span>
+            <div className="mt-2 space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Expired:</span>
+                <span className="text-red-400 font-mono font-bold">{stats.expired} ({stats.expireRate.toFixed(0)}%)</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-400">Override:</span>
+                <span className="text-purple-400 font-mono font-bold">{stats.overridden} ({stats.overrideRate.toFixed(0)}%)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Buy vs Sell Fill Rate */}
+        <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-between shadow-md">
+          <div>
+            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Buy vs Sell Fill Rate</span>
+            <div className="mt-2 space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-400">BUY Limit:</span>
+                <span className="text-green-400 font-mono font-bold">{stats.buyFillRate.toFixed(0)}% <span className="text-slate-500 font-normal">({stats.buyTotal} order)</span></span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-400">SELL Limit:</span>
+                <span className="text-green-400 font-mono font-bold">{stats.sellFillRate.toFixed(0)}% <span className="text-slate-500 font-normal">({stats.sellTotal} order)</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       {/* Filters Container */}
       <div className="bg-card p-4 rounded-xl border border-slate-700/50 shadow-md">
         <div className="flex flex-wrap items-center gap-3">
@@ -125,17 +242,78 @@ export function ActiveLogsTable({ logs, onImageClick }: ActiveLogsTableProps) {
             className="bg-slate-800 border border-slate-700 text-sm rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-primary"
           >
             <option value="ALL">Semua Sesi</option>
-            <optgroup label="Sesi Utama (Aktif)">
-              <option value="Asia">Sesi Asia (07:00 - 14:00)</option>
-              <option value="Euro">Sesi Eropa (16:00 - 19:00)</option>
-              <option value="NY">Sesi New York (23:00 - 04:00)</option>
+            <optgroup label="Sesi Utama (Aktif Only)">
+              <option value="Asia Only">Asia Only {isSummer ? '(07:00 - 14:00)' : '(07:00 - 15:00)'}</option>
+              <option value="Europe Only">Europe Only {isSummer ? '(16:00 - 19:00)' : '(16:00 - 20:00)'}</option>
+              <option value="New York Only">New York Only {isSummer ? '(23:00 - 04:00)' : '(00:00 - 05:00)'}</option>
             </optgroup>
             <optgroup label="Sesi Overlap & Lainnya">
-              <option value="Asia/Euro">Overlap Asia/Eropa (14:00 - 16:00)</option>
-              <option value="Euro/NY">Overlap Eropa/NY (19:00 - 23:00)</option>
-              <option value="Off-Market">Off-Market / Lainnya (04:00 - 07:00)</option>
+              <option value="Asia x Europe Overlap">Asia x Europe Overlap {isSummer ? '(14:00 - 16:00)' : '(15:00 - 16:00)'}</option>
+              <option value="Europe x New York Overlap">Europe x New York Overlap {isSummer ? '(19:00 - 23:00)' : '(20:00 - 00:00)'}</option>
+              <option value="Off / Low Liquidity">Off / Low Liquidity {isSummer ? '(04:00 - 07:00)' : '(05:00 - 07:00)'}</option>
             </optgroup>
           </select>
+
+          {/* Date Picker Filter */}
+          <div className="relative flex items-center">
+            <input
+              type="date"
+              value={filterDate}
+              onChange={(e) => {
+                setFilterDate(e.target.value);
+                if (!e.target.value) {
+                  clearTimeFilter();
+                }
+              }}
+              className="bg-slate-800 border border-slate-700 text-sm rounded-lg pl-3 pr-8 py-1.5 text-slate-200 focus:outline-none focus:border-primary [color-scheme:dark]"
+              title="Filter by Specific Date"
+            />
+            {filterDate && (
+              <button
+                onClick={() => {
+                  setFilterDate('');
+                  clearTimeFilter();
+                }}
+                className="absolute right-2 text-slate-400 hover:text-white transition-colors"
+                title="Clear Date Filter"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
+
+          {/* Filter Jam */}
+          {filterDate && (
+            <div className="flex items-center gap-2 border-l border-slate-700 pl-3">
+              <Clock size={14} className="text-primary shrink-0" />
+              <span className="text-xs text-muted shrink-0">Dari Jam</span>
+              <input
+                type="time"
+                value={filterTimeFrom}
+                onChange={(e) => setFilterTimeFrom(e.target.value)}
+                className="bg-slate-800 border border-slate-700 text-sm rounded-lg px-2 py-1.5 text-slate-200 focus:outline-none focus:border-primary [color-scheme:dark] w-28"
+                title="Dari Jam"
+              />
+              <span className="text-muted text-xs">–</span>
+              <span className="text-xs text-muted shrink-0">Sampai</span>
+              <input
+                type="time"
+                value={filterTimeTo}
+                onChange={(e) => setFilterTimeTo(e.target.value)}
+                className="bg-slate-800 border border-slate-700 text-sm rounded-lg px-2 py-1.5 text-slate-200 focus:outline-none focus:border-primary [color-scheme:dark] w-28"
+                title="Sampai Jam"
+              />
+              {(filterTimeFrom || filterTimeTo) && (
+                <button
+                  onClick={clearTimeFilter}
+                  className="text-slate-400 hover:text-white transition-colors p-1 rounded hover:bg-slate-700"
+                  title="Clear Time Filter"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
