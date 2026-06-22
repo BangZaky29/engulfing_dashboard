@@ -15,11 +15,6 @@ interface PerformanceChartProps {
   trades: TradeAnalytics[];
 }
 
-interface ChartDataPoint {
-  time: string;
-  profit: number;
-  tradeProfit: number | null;
-}
 
 export function PerformanceChart({ trades }: PerformanceChartProps) {
   const uniqueSymbols = useMemo(() => Array.from(new Set(trades.map(t => t.symbol))).sort(), [trades]);
@@ -132,11 +127,11 @@ export function PerformanceChart({ trades }: PerformanceChartProps) {
                 borderRadius: '8px',
               }}
               labelStyle={{ color: '#94a3b8', marginBottom: '4px' }}
-              formatter={(value: any, name: string) => [
+              formatter={(value: any, name: any) => [
                 <span style={{ color: Number(value) >= 0 ? '#10b981' : '#ef4444' }}>
                   {`$${value}`}
                 </span>,
-                name
+                String(name || '')
               ]}
             />
             
