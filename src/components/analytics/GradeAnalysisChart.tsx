@@ -54,17 +54,17 @@ export function GradeAnalysisChart({ trades }: GradeAnalysisChartProps) {
       return true;
     });
 
-    const grades = ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D'];
+    const grades = ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'N/A'];
     const summary: Record<string, { win: number; loss: number; profit: number }> = {};
     
     grades.forEach(g => summary[g] = { win: 0, loss: 0, profit: 0 });
 
     filteredTrades.forEach(trade => {
-      let grade = 'D';
+      let grade = 'N/A';
       try {
         if (trade.notes) {
           const n = JSON.parse(trade.notes);
-          grade = n.grade || 'D';
+          grade = n.grade || 'N/A';
         }
       } catch (e) {}
 

@@ -31,6 +31,7 @@ function App() {
   const { signals } = useSignalData();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('ALL');
+  const [symbolFilter, setSymbolFilter] = useState<string>('ALL');
   const [activeTab, setActiveTab] = useState<Tab>('OVERVIEW');
   const [dstMode, setDstMode] = useState<'auto' | 'summer' | 'winter'>(() => {
     const saved = localStorage.getItem('dst_mode') || 'auto';
@@ -42,11 +43,23 @@ function App() {
     localStorage.setItem('dst_mode', mode);
   };
 
-  // Filter trades based on global time filter
-  const timeFilteredTrades = useMemo(() => {
-    if (timeFilter === 'ALL') return trades;
+  // Extract unique symbols from trades for the global filter
+  const uniqueSymbols = useMemo(() => {
+    const symbols = new Set(trades.map((t) => t.symbol));
+    return Array.from(symbols);
+  }, [trades]);
 
-    return trades.filter((trade) => {
+  // Filter trades based on global time and symbol filters
+  const timeFilteredTrades = useMemo(() => {
+    let filtered = trades;
+
+    if (symbolFilter !== 'ALL') {
+      filtered = filtered.filter(t => t.symbol === symbolFilter);
+    }
+
+    if (timeFilter === 'ALL') return filtered;
+
+    return filtered.filter((trade) => {
       const tradeDate = new Date(trade.trade_created_at);
       switch (timeFilter) {
         case 'TODAY':
@@ -61,10 +74,22 @@ function App() {
           return true;
       }
     });
-  }, [trades, timeFilter]);
+  }, [trades, timeFilter, symbolFilter]);
 
   // Calculate stats based on the filtered trades
   const currentStats = useMemo(() => calculateDashboardStats(timeFilteredTrades), [timeFilteredTrades]);
+
+  // Calculate best pair if symbolFilter === 'ALL'
+  const bestPair = useMemo(() => {
+    if (symbolFilter !== 'ALL' || timeFilteredTrades.length === 0) return null;
+    const symbolMap: Record<string, number> = {};
+    timeFilteredTrades.forEach(t => {
+      const sym = t.symbol || 'UNKNOWN';
+      symbolMap[sym] = (symbolMap[sym] || 0) + (t.profit || 0);
+    });
+    const best = Object.entries(symbolMap).sort((a, b) => b[1] - a[1])[0];
+    return best ? { symbol: best[0], profit: best[1] } : null;
+  }, [timeFilteredTrades, symbolFilter]);
 
   return (
     <div className="min-h-screen bg-background text-text p-4 md:p-10 font-sans">
@@ -106,6 +131,23 @@ function App() {
                 <option value="winter">Winter / Non-DST</option>
               </select>
             </div>
+            {/* Global Symbol Filter Dropdown */}
+            <div className="flex items-center bg-slate-800 rounded-lg border border-slate-700 p-1 flex-1 md:flex-none">
+              <div className="pl-2 pr-1 text-muted hidden md:block">
+                <FilterIcon size={16} />
+              </div>
+              <select
+                value={symbolFilter}
+                onChange={(e) => setSymbolFilter(e.target.value)}
+                className="bg-transparent text-sm w-full md:w-auto px-2 py-1.5 text-slate-200 focus:outline-none"
+              >
+                <option value="ALL">Semua Pairs</option>
+                {uniqueSymbols.map(sym => (
+                  <option key={sym} value={sym}>{sym}</option>
+                ))}
+              </select>
+            </div>
+
             {/* Global Time Filter Dropdown */}
             <div className="flex items-center bg-slate-800 rounded-lg border border-slate-700 p-1 flex-1 md:flex-none">
               <div className="pl-2 pr-1 text-muted hidden md:block">
@@ -143,7 +185,7 @@ function App() {
         )}
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className={`grid grid-cols-1 md:grid-cols-2 ${bestPair ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-6`}>
           <StatCard
             title={t('totalTrades')}
             value={currentStats.totalTrades}
@@ -170,6 +212,16 @@ function App() {
             trendUp={currentStats.netProfit >= 0}
             className={currentStats.netProfit >= 0 ? "border-success/20" : "border-danger/20"}
           />
+          {bestPair && (
+            <StatCard
+              title="Best Pair"
+              value={bestPair.symbol}
+              icon={<Award size={24} className="text-primary" />}
+              trend={`+$${bestPair.profit.toFixed(2)}`}
+              trendUp={true}
+              className="border-primary/20"
+            />
+          )}
         </div>
 
         {/* Tabs Navigation */}

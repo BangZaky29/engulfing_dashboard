@@ -112,7 +112,6 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
     return parts.join(' · ');
   }, [filterMode, filterResult, filterSymbol, filterGrade, filterSession, filterDate, filterTimeFrom, filterTimeTo]);
 
-  // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [filterMode, filterResult, filterSymbol, filterGrade, filterSession, filterDate, filterTimeFrom, filterTimeTo, trades]);
@@ -169,7 +168,7 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
             onChange={(e) => setFilterSymbol(e.target.value)}
             className="bg-slate-800 border border-slate-700 text-sm rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-primary"
           >
-            <option value="ALL">{t('allSymbols')}</option>
+            <option value="ALL">Semua Simbol</option>
             {uniqueSymbols.map((sym) => (
               <option key={sym} value={sym}>{sym}</option>
             ))}
@@ -496,6 +495,7 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
                           const n = trade.notes ? JSON.parse(trade.notes) : {};
                           const g = n.grade || '-';
                           const sb = n.score_breakdown || '';
+                          const ring = n.ring_pts ? `Ring: ${n.ring_pts} pts` : '';
                           return (
                             <div className="flex flex-col items-start gap-1">
                               <span className={cn(
@@ -508,6 +508,7 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
                                 "bg-danger/20 text-danger"
                               )}>{g}</span>
                               {sb && <span className="text-[9px] text-muted font-mono tracking-tight whitespace-nowrap">{sb}</span>}
+                              {ring && <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-sm whitespace-nowrap border border-slate-700">{ring}</span>}
                             </div>
                           );
                         } catch(e) {
