@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect } from 'react';
 import type { TradeAnalytics } from '../types';
 import { format } from 'date-fns';
 import { cn, getSessionGroup, getSummerFlag } from '../lib/utils';
-import { ImageIcon, Filter, Clock, TrendingUp, TrendingDown, BarChart2, X, Globe } from 'lucide-react';
+import { ImageIcon, Filter, Clock, TrendingUp, TrendingDown, BarChart2, X, Globe, Trash2, AlertTriangle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 import { useLanguage } from '../lib/i18n';
 
 interface TradesTableProps {
@@ -22,6 +23,10 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
   const [filterDate, setFilterDate] = useState<string>('');
   const [filterTimeFrom, setFilterTimeFrom] = useState<string>('');
   const [filterTimeTo, setFilterTimeTo] = useState<string>('');
+
+  const [tradeToDelete, setTradeToDelete] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -128,6 +133,35 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
     const startIndex = (currentPage - 1) * itemsPerPage;
     return filteredTrades.slice(startIndex, startIndex + itemsPerPage);
   }, [filteredTrades, currentPage]);
+
+  const handleDeleteTrade = async () => {
+    if (!tradeToDelete) return;
+    setIsDeleting(true);
+    try {
+      const r1 = await supabase.from('wa_outbox').delete().eq('ticket_id', tradeToDelete);
+      if (r1.error) throw new Error(`wa_outbox: ${r1.error.message}`);
+      
+      const r2 = await supabase.from('trade_active_logs').delete().eq('ticket_id', tradeToDelete);
+      if (r2.error) throw new Error(`trade_active_logs: ${r2.error.message}`);
+      
+      const r3 = await supabase.from('trade_analytics').delete().eq('ticket_id', tradeToDelete);
+      if (r3.error) throw new Error(`trade_analytics: ${r3.error.message}`);
+      
+      const r4 = await supabase.from('engulfing_signals').delete().eq('ticket_id', tradeToDelete);
+      if (r4.error) throw new Error(`engulfing_signals: ${r4.error.message}`);
+      
+      // Tampilkan notifikasi sukses
+      setSuccessToast(`Tiket #${tradeToDelete} berhasil dihapus secara permanen dari semua tabel analisa.`);
+      setTimeout(() => setSuccessToast(null), 5000);
+      
+    } catch (error: any) {
+      console.error("Gagal menghapus tiket:", error);
+      alert("Gagal menghapus data! Pesan error: " + error.message);
+    } finally {
+      setIsDeleting(false);
+      setTradeToDelete(null);
+    }
+  };
 
   return (
     <div className="space-y-3">
@@ -420,7 +454,7 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
                 <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">{t('profit')}</th>
                 <th className="hidden md:table-cell px-6 py-4 font-medium text-sm">{t('entryExit')}</th>
                 <th className="hidden md:table-cell px-6 py-4 font-medium text-sm">Grade & Score</th>
-                <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm text-center">{t('chart')}</th>
+                <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm text-center">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/50">
@@ -517,15 +551,24 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
                       })()}
                     </td>
                     <td className="px-3 md:px-6 py-3 md:py-4 text-center">
-                      {trade.image_url && (
+                      <div className="flex items-center justify-center gap-2">
+                        {trade.image_url && (
+                          <button
+                            onClick={() => onImageClick(trade.image_url)}
+                            className="text-primary hover:text-primary/80 transition-colors inline-flex items-center justify-center p-1.5 md:p-2 rounded-lg hover:bg-primary/10"
+                            title="View Screenshot"
+                          >
+                            <ImageIcon size={16} className="md:w-[18px] md:h-[18px]" />
+                          </button>
+                        )}
                         <button
-                          onClick={() => onImageClick(trade.image_url)}
-                          className="text-primary hover:text-primary/80 transition-colors inline-flex items-center justify-center p-1.5 md:p-2 rounded-lg hover:bg-primary/10"
-                          title="View Screenshot"
+                          onClick={() => setTradeToDelete(trade.ticket_id)}
+                          className="text-danger hover:text-danger/80 transition-colors inline-flex items-center justify-center p-1.5 md:p-2 rounded-lg hover:bg-danger/10"
+                          title="Hapus Data Trade"
                         >
-                          <ImageIcon size={16} className="md:w-[18px] md:h-[18px]" />
+                          <Trash2 size={16} className="md:w-[18px] md:h-[18px]" />
                         </button>
-                      )}
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -562,6 +605,62 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
               className="px-3 py-1.5 text-sm bg-slate-800 border border-slate-700 rounded-lg hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {t('next')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Confirmation Modal ── */}
+      {tradeToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-6 max-w-md w-full animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-danger/10 mb-4 mx-auto">
+              <AlertTriangle size={24} className="text-danger" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-100 text-center mb-2">Hapus Riwayat Trading?</h3>
+            <p className="text-sm text-slate-300 text-center mb-6">
+              Apakah Anda yakin ingin menghapus tiket <span className="font-mono text-danger font-bold">#{tradeToDelete}</span>? Menghapus tiket ini akan menghapus riwayat dari tabel analisis, log aktif, antrean pesan, dan sinyal. <br/><br/>Aksi ini tidak dapat dibatalkan.
+            </p>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setTradeToDelete(null)}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleDeleteTrade}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-medium text-white bg-danger hover:bg-danger/90 rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Menghapus...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={16} />
+                    Ya, Hapus
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Success Toast Notification ── */}
+      {successToast && (
+        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
+          <div className="bg-slate-900 border border-success/30 text-success px-5 py-3.5 rounded-xl shadow-2xl flex items-center gap-3">
+            <div className="bg-success/20 p-1.5 rounded-full">
+              <TrendingUp size={16} className="text-success" />
+            </div>
+            <span className="text-sm font-medium">{successToast}</span>
+            <button onClick={() => setSuccessToast(null)} className="text-success/70 hover:text-success transition-colors ml-4 p-1 rounded hover:bg-success/10">
+              <X size={16} />
             </button>
           </div>
         </div>
