@@ -86,11 +86,15 @@ export function SignalsTable({ signals, dstMode }: SignalsTableProps) {
         matchStrategy = sig.grade === 'N/A';
       }
 
+      const isInfo = typeof sig.ticketId === 'string' && sig.ticketId.startsWith('INFO_');
+
       let matchStatus = true;
       if (filterStatus === 'CONFIRMED') {
-        matchStatus = sig.is_confirmed;
+        matchStatus = sig.is_confirmed && !isInfo;
       } else if (filterStatus === 'SKIPPED') {
-        matchStatus = !sig.is_confirmed;
+        matchStatus = !sig.is_confirmed && !isInfo;
+      } else if (filterStatus === 'INFO') {
+        matchStatus = isInfo;
       }
 
       let matchDate = true;
@@ -116,15 +120,21 @@ export function SignalsTable({ signals, dstMode }: SignalsTableProps) {
   }, [filterSymbol, filterDirection, filterGrade, filterStatus, filterSession, filterStrategy, filterDate, filterTimeFrom, filterTimeTo, signals]);
 
   const stats = useMemo(() => {
-    const total = filteredSignals.length;
-    const confirmed = filteredSignals.filter(s => s.is_confirmed).length;
-    const skipped = total - confirmed;
-    const confirmRate = total > 0 ? (confirmed / total) * 100 : 0;
-    const skipRate = total > 0 ? (skipped / total) * 100 : 0;
+    // Only count genuine OP signals for total, confirmed, skipped
+    const opSignals = filteredSignals.filter(s => !(typeof s.ticketId === 'string' && s.ticketId.startsWith('INFO_')));
+    const infoSignals = filteredSignals.filter(s => typeof s.ticketId === 'string' && s.ticketId.startsWith('INFO_'));
+    
+    const totalOP = opSignals.length;
+    const totalInfo = infoSignals.length;
+    const confirmed = opSignals.filter(s => s.is_confirmed).length;
+    const skipped = totalOP - confirmed;
+    
+    const confirmRate = totalOP > 0 ? (confirmed / totalOP) * 100 : 0;
+    const skipRate = totalOP > 0 ? (skipped / totalOP) * 100 : 0;
     
     // Calculate skip reasons count
     const skipReasonsMap: Record<string, number> = {};
-    filteredSignals.forEach(s => {
+    opSignals.forEach(s => {
       if (!s.is_confirmed && s.skip_reason) {
         let reason = s.skip_reason;
         if (reason.includes('posisi aktif') || reason.includes('active position')) {
@@ -143,7 +153,7 @@ export function SignalsTable({ signals, dstMode }: SignalsTableProps) {
       .sort((a, b) => b.count - a.count)
       .slice(0, 3);
       
-    return { total, confirmed, skipped, confirmRate, skipRate, skipReasonsList };
+    return { total: totalOP, totalInfo, confirmed, skipped, confirmRate, skipRate, skipReasonsList };
   }, [filteredSignals]);
 
   // Pagination calculations
@@ -156,14 +166,23 @@ export function SignalsTable({ signals, dstMode }: SignalsTableProps) {
   return (
     <div className="space-y-4">
       {/* Summary Analytics Panel */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {/* Total Trigger */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {/* Total OP Trigger */}
         <div className="bg-slate-800/40 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-between shadow-md">
           <div>
-            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Total Trigger</span>
+            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider block">Total OP Trigger</span>
             <span className="text-2xl font-black text-white mt-1 block">{stats.total}</span>
           </div>
-          <p className="text-[10px] text-slate-500 mt-2">Seluruh sinyal engulfing yang dideteksi oleh scanner</p>
+          <p className="text-[10px] text-slate-500 mt-2">Sinyal eksekusi (non-info) yang dideteksi scanner</p>
+        </div>
+
+        {/* Info & Sync Signals */}
+        <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 flex flex-col justify-between shadow-md">
+          <div>
+            <span className="text-[10px] text-blue-400 font-semibold uppercase tracking-wider block">Info & Sync Signals</span>
+            <span className="text-2xl font-black text-blue-400 mt-1 block">{stats.totalInfo}</span>
+          </div>
+          <p className="text-[10px] text-slate-500 mt-2">Sinyal pasif untuk M15, H1, dan Sinkronisasi</p>
         </div>
 
         {/* OP Dikonfirmasi */}
@@ -230,6 +249,7 @@ export function SignalsTable({ signals, dstMode }: SignalsTableProps) {
             <option value="ALL">Semua Status</option>
             <option value="CONFIRMED">Dikonfirmasi (OP)</option>
             <option value="SKIPPED">Dilewati (Skip)</option>
+            <option value="INFO">Hanya Info / Sync</option>
           </select>
 
           {/* Filter Direction */}
@@ -466,7 +486,15 @@ export function SignalsTable({ signals, dstMode }: SignalsTableProps) {
 
                     {/* Status */}
                     <td className="px-6 py-4 text-sm">
-                      {sig.is_confirmed ? (
+                      {typeof sig.ticketId === 'string' && sig.ticketId === 'INFO_SYNC' ? (
+                        <span className="inline-flex items-center gap-1 text-orange-400 font-medium bg-orange-500/10 px-2 py-0.5 rounded border border-orange-500/20">
+                          🔥 Sync Signal
+                        </span>
+                      ) : typeof sig.ticketId === 'string' && sig.ticketId.startsWith('INFO_') ? (
+                        <span className="inline-flex items-center gap-1 text-blue-400 font-medium bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
+                          ℹ️ Info Signal
+                        </span>
+                      ) : sig.is_confirmed ? (
                         <span className="inline-flex items-center gap-1 text-success font-medium bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">
                           <CheckCircle size={14} />
                           OP Dikonfirmasi
@@ -481,7 +509,22 @@ export function SignalsTable({ signals, dstMode }: SignalsTableProps) {
 
                     {/* Detail / Alasan Skip */}
                     <td className="px-6 py-4 text-sm">
-                      {sig.is_confirmed ? (
+                      {typeof sig.ticketId === 'string' && sig.ticketId === 'INFO_SYNC' ? (
+                        <span className="text-orange-400/80 font-medium text-xs">
+                          {(() => {
+                            try {
+                              const notes = JSON.parse(sig.notes || '{}');
+                              return `Cocok Arah: ${sig.timeframe.replace('SYNC_', '').replace('_', ' & ')}` + (notes.sync_with ? ` (Based on ${notes.sync_with})` : '');
+                            } catch {
+                              return `Korelasi TF: ${sig.timeframe}`;
+                            }
+                          })()}
+                        </span>
+                      ) : typeof sig.ticketId === 'string' && sig.ticketId.startsWith('INFO_') ? (
+                        <span className="text-blue-400/80 font-medium text-xs">
+                          Sinyal pasif {sig.timeframe} (Hanya Notifikasi)
+                        </span>
+                      ) : sig.is_confirmed ? (
                         <span className="text-slate-400 font-mono">
                           {sig.ticketId ? `Ticket ID: #${sig.ticketId}` : 'Executed in Market'}
                         </span>
