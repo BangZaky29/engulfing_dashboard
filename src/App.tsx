@@ -10,6 +10,7 @@ import { PatternClusterAnalysis } from './components/analytics/PatternClusterAna
 import { GradeAnalysisChart } from './components/analytics/GradeAnalysisChart';
 import { SignalFunnelChart } from './components/analytics/SignalFunnelChart';
 import { HoldingTimeChart } from './components/analytics/HoldingTimeChart';
+import { TriggerFloatingAnalyticsCard } from './components/analytics/TriggerFloatingAnalyticsCard';
 import { ReportGallery } from './components/analytics/ReportGallery';
 import { ImageModal } from './components/ImageModal';
 import { SignalsTable } from './components/SignalsTable';
@@ -324,30 +325,37 @@ function App() {
         {/* Tab Content: DEEP ANALYTICS */}
         {activeTab === 'DEEP_ANALYTICS' && (
           <div className="space-y-6 animate-in fade-in duration-300">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Hourly Win Rate */}
+            <div className="space-y-6">
+              {/* Trigger Analytics moved to top */}
               <div className="bg-surface rounded-xl p-6 border border-white/5 shadow-xl relative overflow-hidden group">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <div className="relative z-10">
-                  <div className="flex items-center gap-2 mb-2">
-                    <BarChart3 className="text-primary" size={20} />
-                    <h2 className="text-lg font-semibold text-white">{t('hourlyWinRateTitle')}</h2>
-                  </div>
-                  <p className="text-sm text-slate-400">{t('hourlyWinRateDesc')}</p>
-                  <HourlyWinRateChart trades={timeFilteredTrades} />
-                </div>
+                <TriggerFloatingAnalyticsCard />
               </div>
 
-              {/* Pattern Ratio vs Profit */}
-              <div className="bg-surface rounded-xl p-6 border border-white/5 shadow-xl relative overflow-hidden group">
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <div className="relative z-10">
-                  <div className="flex items-center gap-2 mb-2">
-                    <ScatterIcon className="text-primary" size={20} />
-                    <h2 className="text-lg font-semibold text-white">{t('patternRatioTitle')}</h2>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Hourly Win Rate */}
+                <div className="bg-surface rounded-xl p-6 border border-white/5 shadow-xl relative overflow-hidden group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-2">
+                      <BarChart3 className="text-primary" size={20} />
+                      <h2 className="text-lg font-semibold text-white">{t('hourlyWinRateTitle')}</h2>
+                    </div>
+                    <p className="text-sm text-slate-400">{t('hourlyWinRateDesc')}</p>
+                    <HourlyWinRateChart trades={timeFilteredTrades} />
                   </div>
-                  <p className="text-sm text-slate-400">{t('patternRatioDesc')}</p>
-                  <PatternAnalysisChart trades={timeFilteredTrades} />
+                </div>
+
+                {/* Pattern Ratio vs Profit */}
+                <div className="bg-surface rounded-xl p-6 border border-white/5 shadow-xl relative overflow-hidden group">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-2">
+                      <ScatterIcon className="text-primary" size={20} />
+                      <h2 className="text-lg font-semibold text-white">{t('patternRatioTitle')}</h2>
+                    </div>
+                    <p className="text-sm text-slate-400">{t('patternRatioDesc')}</p>
+                    <PatternAnalysisChart trades={timeFilteredTrades} />
+                  </div>
                 </div>
               </div>
             </div>

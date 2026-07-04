@@ -1,0 +1,78 @@
+import { useEffect, useMemo, useState } from 'react';
+import { supabase } from '../lib/supabase';
+
+export type TriggerAnalyticsMode = 'BUY' | 'SELL';
+
+export interface TradeTriggerAnalyticsRow {
+  trade_date: string;
+  symbol: string;
+  trigger_type: string;
+  mode: TriggerAnalyticsMode;
+  tf_execute: string;
+  tf_monitor: string;
+
+  total_trades: number | null;
+  total_profit_count: number | null;
+  total_loss_count: number | null;
+  total_profit_usd: number | null;
+  total_loss_usd: number | null;
+
+  probability_profit: number | null;
+
+  max_negative_floating_before_profit_usd: number | null;
+  max_negative_floating_before_profit_pct: number | null;
+  sum_negative_floating_before_profit_usd: number | null;
+}
+
+export function useTriggerAnalyticsData() {
+  const [rows, setRows] = useState<TradeTriggerAnalyticsRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async (showLoader = true) => {
+    try {
+      if (showLoader) setLoading(true);
+
+      const { data, error: err } = await supabase
+        .from('trade_trigger_analytics')
+        .select('*')
+        .order('trade_date', { ascending: false })
+        .limit(250);
+
+      if (err) throw err;
+      setRows((data as TradeTriggerAnalyticsRow[]) || []);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+      console.error('Error fetching trade_trigger_analytics:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchData(false);
+
+    const channel = supabase
+      .channel('trade_trigger_analytics_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'trade_trigger_analytics' },
+        () => {
+          void fetchData(false);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const latest = useMemo(() => {
+    if (!rows.length) return null;
+    return rows[0];
+  }, [rows]);
+
+  return { rows, latest, loading, error, refetch: fetchData };
+}
