@@ -22,7 +22,21 @@ export interface TradeTriggerAnalyticsRow {
   max_negative_floating_before_profit_usd: number | null;
   max_negative_floating_before_profit_pct: number | null;
   sum_negative_floating_before_profit_usd: number | null;
+
+  // Deep improv metrics (from trade_trigger_floating_analytics view)
+  avg_max_before_profit_usd?: number | null;
+  max_max_before_profit_usd?: number | null;
+  avg_max_before_profit_pct_usd_based?: number | null;
+  avg_total_distance_price_usd_based?: number | null;
+  sum_total_distance_price_usd_based?: number | null;
+
+  avg_max_before_profit_pct?: number | null;
+  max_max_before_profit_pct?: number | null;
+  avg_max_before_profit_usd_pct_based?: number | null;
+  avg_total_distance_price_pct_based?: number | null;
+  sum_total_distance_price_pct_based?: number | null;
 }
+
 
 export function useTriggerAnalyticsData() {
   const [rows, setRows] = useState<TradeTriggerAnalyticsRow[]>([]);
@@ -33,17 +47,21 @@ export function useTriggerAnalyticsData() {
     try {
       if (showLoader) setLoading(true);
 
+      // Primary source: existing probability metrics
+      // Extra floating metrics: join-like approach is not available at client,
+      // so we fetch from the view that contains BOTH sets we need.
       const { data, error: err } = await supabase
-        .from('trade_trigger_analytics')
+        .from('trade_trigger_floating_analytics')
         .select('*')
         .order('trade_date', { ascending: false })
         .limit(250);
+
 
       if (err) throw err;
       setRows((data as TradeTriggerAnalyticsRow[]) || []);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
-      console.error('Error fetching trade_trigger_analytics:', e);
+      console.error('Error fetching trade_trigger_floating_analytics:', e);
     } finally {
       setLoading(false);
     }
@@ -53,10 +71,10 @@ export function useTriggerAnalyticsData() {
     void fetchData(false);
 
     const channel = supabase
-      .channel('trade_trigger_analytics_changes')
+      .channel('trade_trigger_floating_analytics_changes')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'trade_trigger_analytics' },
+        { event: '*', schema: 'public', table: 'trade_floating_snapshots' },
         () => {
           void fetchData(false);
         }
