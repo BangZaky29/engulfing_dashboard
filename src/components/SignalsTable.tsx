@@ -397,6 +397,7 @@ export function SignalsTable({ signals, dstMode }: SignalsTableProps) {
                 <th className="px-6 py-4 font-medium text-sm">Sesi</th>
                 <th className="px-6 py-4 font-medium text-sm">Strategi</th>
                 <th className="px-6 py-4 font-medium text-sm">Grade & Score</th>
+                <th className="hidden lg:table-cell px-6 py-4 font-medium text-sm">Triggers (H1|M15|M5)</th>
                 <th className="px-6 py-4 font-medium text-sm">Status</th>
                 <th className="px-6 py-4 font-medium text-sm">Detail / Alasan Skip</th>
               </tr>
@@ -482,6 +483,26 @@ export function SignalsTable({ signals, dstMode }: SignalsTableProps) {
                           </span>
                         )}
                       </div>
+                    </td>
+
+                    {/* Triggers */}
+                    <td className="hidden lg:table-cell px-6 py-4">
+                      {(() => {
+                        try {
+                          const n = sig.notes ? JSON.parse(sig.notes) : {};
+                          const h1 = n.h1_trigger_source || '-';
+                          const m15 = n.m15_trigger_source || '-';
+                          const m5 = n.m5_trigger_source || '-';
+                          if (h1 === '-' && m15 === '-' && m5 === '-') return <span className="text-muted">-</span>;
+                          return (
+                            <div className="flex flex-col gap-1 font-mono text-[10px]">
+                              <span className="text-purple-400">H1: {h1}</span>
+                              <span className="text-blue-400">M15: {m15}</span>
+                              <span className="text-emerald-400">M5: {m5}</span>
+                            </div>
+                          );
+                        } catch(e) { return <span className="text-muted">-</span>; }
+                      })()}
                     </td>
 
                     {/* Status */}

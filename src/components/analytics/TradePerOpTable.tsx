@@ -25,6 +25,7 @@ interface TradeRow {
   exit_time: string | null;
   trigger_type?: string | null;
   trading_session?: string | null;
+  notes?: string | null;
 }
 
 interface FloatSummary {
@@ -38,6 +39,12 @@ interface EnrichedRow extends TradeRow {
   max_float_usd: number | null;
   max_float_pct: number | null;
   max_pts: number | null;
+  max_loss_to_sl_pct: number | null;
+  op_level_pts: number | null;
+  op_level_pct: number | null;
+  h1_trigger: string;
+  m15_trigger: string;
+  m5_trigger: string;
 }
 
 // ─── Helpers ─────────────────────────────────────────
@@ -95,7 +102,7 @@ export function TradePerOpTable() {
       let q = supabase
         .from('trade_analytics')
         .select(
-          'id,ticket_id,symbol,timeframe,mode,result,profit,op_price,sl_price,tp_price,exit_price,entry_time,exit_time,volume,trading_session,trigger_type'
+          'id,ticket_id,symbol,timeframe,mode,result,profit,op_price,sl_price,tp_price,exit_price,entry_time,exit_time,volume,trading_session,trigger_type,notes'
         )
         .order('entry_time', { ascending: false })
         .limit(500);
@@ -183,12 +190,31 @@ export function TradePerOpTable() {
 
   // ── Enriched rows ──
   const enriched: EnrichedRow[] = useMemo(() => {
-    return trades.map((t) => ({
-      ...t,
-      max_float_usd: floatMap[t.ticket_id]?.max_float_usd ?? null,
-      max_float_pct: floatMap[t.ticket_id]?.max_float_pct ?? null,
-      max_pts:       floatMap[t.ticket_id]?.max_pts ?? null,
-    }));
+    return trades.map((t) => {
+      let notesObj: any = {};
+      try {
+        if (t.notes) notesObj = JSON.parse(t.notes);
+      } catch (e) {}
+
+      // Fallback: If float map is empty (because snapshot is deleted or not found),
+      // we can also read max float from notes if available!
+      const floatUsd = floatMap[t.ticket_id]?.max_float_usd ?? (Math.abs(notesObj.max_floating_usd || 0) || null);
+      const floatPts = floatMap[t.ticket_id]?.max_pts ?? (Math.abs(notesObj.max_floating_pts || 0) || null);
+      const floatPct = floatMap[t.ticket_id]?.max_float_pct ?? null; // % dari asset price
+
+      return {
+        ...t,
+        max_float_usd: floatUsd,
+        max_float_pct: floatPct,
+        max_pts: floatPts,
+        max_loss_to_sl_pct: notesObj.max_loss_to_sl_pct != null ? Math.abs(notesObj.max_loss_to_sl_pct) : null,
+        op_level_pts: notesObj.op_level_pts ?? null,
+        op_level_pct: notesObj.op_level_pct ?? null,
+        h1_trigger: notesObj.h1_trigger_source || '-',
+        m15_trigger: notesObj.m15_trigger_source || '-',
+        m5_trigger: notesObj.m5_trigger_source || '-',
+      };
+    });
   }, [trades, floatMap]);
 
   // ── Pagination ──
@@ -339,15 +365,18 @@ export function TradePerOpTable() {
                 <th className="px-4 py-3 text-xs text-slate-400 font-medium">Result</th>
                 <th className="px-4 py-3 text-xs text-slate-400 font-medium text-right">Profit (USD)</th>
                 <th className="px-4 py-3 text-xs text-slate-400 font-medium text-right">
+                  <span className="text-blue-400">OP Level</span>
+                </th>
+                <th className="px-4 py-3 text-xs text-slate-400 font-medium text-right">
                   <span className="text-orange-400">Max Float (USD)</span>
                 </th>
                 <th className="px-4 py-3 text-xs text-slate-400 font-medium text-right">
-                  <span className="text-orange-400">Max Float (%)</span>
+                  <span className="text-orange-400">Max Float (% SL)</span>
                 </th>
                 <th className="px-4 py-3 text-xs text-slate-400 font-medium text-right">
                   <span className="text-orange-400">Max Pts</span>
                 </th>
-                <th className="px-4 py-3 text-xs text-slate-400 font-medium">Trigger</th>
+                <th className="px-4 py-3 text-xs text-slate-400 font-medium">Triggers (H1|M15|M5)</th>
                 <th className="px-4 py-3 text-xs text-slate-400 font-medium">Session</th>
               </tr>
             </thead>
@@ -425,10 +454,22 @@ export function TradePerOpTable() {
                         {fmtMoney(row.profit, true)}
                       </td>
 
+                      {/* OP Level */}
+                      <td className="px-4 py-3 text-right font-mono text-xs text-slate-300">
+                        {row.op_level_pts != null ? (
+                          <div className="flex flex-col">
+                            <span>{row.op_level_pts} pts</span>
+                            <span className="text-[10px] text-slate-500">({row.op_level_pct}%)</span>
+                          </div>
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )}
+                      </td>
+
                       {/* Max Float USD */}
                       <td className="px-4 py-3 text-right font-mono text-sm">
                         {hasFloat ? (
-                          <span className="text-orange-400">
+                          <span className="text-orange-400 font-semibold">
                             -{fmtMoney(row.max_float_usd)}
                           </span>
                         ) : (
@@ -436,9 +477,13 @@ export function TradePerOpTable() {
                         )}
                       </td>
 
-                      {/* Max Float Pct */}
+                      {/* Max Float % SL (atau Pct) */}
                       <td className="px-4 py-3 text-right font-mono text-sm">
-                        {row.max_float_pct != null ? (
+                        {row.max_loss_to_sl_pct != null ? (
+                          <span className="text-orange-300">
+                            {fmtPct(row.max_loss_to_sl_pct)}
+                          </span>
+                        ) : row.max_float_pct != null ? (
                           <span className="text-orange-300">
                             {fmtPct(row.max_float_pct)}
                           </span>
@@ -458,18 +503,24 @@ export function TradePerOpTable() {
                         )}
                       </td>
 
-                      {/* Trigger */}
-                        <td className="px-4 py-3">
-                        {row.trigger_type ? (
-                            <span className="text-xs bg-indigo-500/15 text-indigo-400 px-2 py-0.5 rounded font-medium">
-                            {row.trigger_type}
-                            </span>
+                      {/* Triggers */}
+                      <td className="px-4 py-3">
+                        {row.h1_trigger !== '-' || row.m15_trigger !== '-' || row.m5_trigger !== '-' ? (
+                          <div className="flex flex-col gap-0.5 font-mono text-[10px]">
+                            <span className="text-purple-400">H1: {row.h1_trigger}</span>
+                            <span className="text-blue-400">M15: {row.m15_trigger}</span>
+                            <span className="text-emerald-400">M5: {row.m5_trigger}</span>
+                          </div>
                         ) : (
-                            <span className="text-slate-600 text-xs">—</span>
+                           row.trigger_type ? (
+                            <span className="text-xs bg-indigo-500/15 text-indigo-400 px-2 py-0.5 rounded font-medium">
+                              {row.trigger_type}
+                            </span>
+                          ) : <span className="text-slate-600 text-xs">—</span>
                         )}
-                        </td>
+                      </td>
 
-                        {/* Session */}
+                      {/* Session */}
                         <td className="px-4 py-3 text-slate-400 text-xs">
                         {row.trading_session ?? '—'}
                         </td>

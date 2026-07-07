@@ -454,6 +454,8 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
                 <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm">{t('profit')}</th>
                 <th className="hidden md:table-cell px-6 py-4 font-medium text-sm">{t('entryExit')}</th>
                 <th className="hidden md:table-cell px-6 py-4 font-medium text-sm">Grade & Score</th>
+                <th className="hidden lg:table-cell px-6 py-4 font-medium text-sm">Triggers (H1|M15|M5)</th>
+                <th className="hidden lg:table-cell px-6 py-4 font-medium text-sm">OP Level & MFE</th>
                 <th className="px-3 md:px-6 py-3 md:py-4 font-medium text-xs md:text-sm text-center">Aksi</th>
               </tr>
             </thead>
@@ -548,6 +550,42 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
                         } catch(e) {
                           return <span className="text-xs text-muted">-</span>;
                         }
+                      })()}
+                    </td>
+                    <td className="hidden lg:table-cell px-6 py-4 text-xs">
+                      {(() => {
+                        try {
+                          const n = trade.notes ? JSON.parse(trade.notes) : {};
+                          const h1 = n.h1_trigger_source || '-';
+                          const m15 = n.m15_trigger_source || '-';
+                          const m5 = n.m5_trigger_source || '-';
+                          if (h1 === '-' && m15 === '-' && m5 === '-') return <span className="text-muted">-</span>;
+                          return (
+                            <div className="flex flex-col gap-1 font-mono text-[10px]">
+                              <span className="text-purple-400">H1: {h1}</span>
+                              <span className="text-blue-400">M15: {m15}</span>
+                              <span className="text-emerald-400">M5: {m5}</span>
+                            </div>
+                          );
+                        } catch(e) { return <span className="text-muted">-</span>; }
+                      })()}
+                    </td>
+                    <td className="hidden lg:table-cell px-6 py-4 text-xs">
+                      {(() => {
+                        try {
+                          const n = trade.notes ? JSON.parse(trade.notes) : {};
+                          const opPts = n.op_level_pts !== undefined ? n.op_level_pts : '-';
+                          const opPct = n.op_level_pct !== undefined ? n.op_level_pct : '-';
+                          const fUsd = n.max_floating_usd !== undefined ? Math.abs(n.max_floating_usd).toFixed(2) : '-';
+                          const fPts = n.max_floating_pts !== undefined ? Math.abs(n.max_floating_pts).toFixed(1) : '-';
+                          const fPct = n.max_loss_to_sl_pct !== undefined ? Math.abs(n.max_loss_to_sl_pct).toFixed(1) : '-';
+                          return (
+                            <div className="flex flex-col gap-1 whitespace-nowrap">
+                              <span className="text-[10px] text-slate-300 bg-slate-800/50 px-1.5 py-0.5 rounded-sm border border-slate-700">OP: {opPts} pts ({opPct}%)</span>
+                              <span className="text-[10px] text-danger font-medium bg-danger/10 px-1.5 py-0.5 rounded-sm border border-danger/20">MFE: -${fUsd} ({fPts} pts | {fPct}%)</span>
+                            </div>
+                          );
+                        } catch(e) { return <span className="text-muted">-</span>; }
                       })()}
                     </td>
                     <td className="px-3 md:px-6 py-3 md:py-4 text-center">
