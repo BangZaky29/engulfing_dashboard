@@ -357,7 +357,7 @@ export function TriggerFloatingAnalyticsCard() {
 
                 <StatCard
                   title="Opsi B Max (Pct)"
-                  value={active.max_max_before_profit_pct == null ? '—' : `${active.max_max_before_profit_pct.toFixed(1)}%`}
+                  value={active.max_max_before_profit_pct == null ? '—' : `${active.max_max_before_profit_pct.toFixed(2)}%`}
                   icon={null}
                 />
 
@@ -396,6 +396,8 @@ export function TriggerFloatingAnalyticsCard() {
                 <th className="py-2 pr-3">tf</th>
                 <th className="py-2 pr-3">Max A (USD)</th>
                 <th className="py-2 pr-3">Max B (Pct)</th>
+                <th className="py-2 pr-3">Max Pts</th>
+                <th className="py-2 pr-3">Triggers</th>
               </tr>
             </thead>
             <tbody>
@@ -415,7 +417,7 @@ export function TriggerFloatingAnalyticsCard() {
                     <td className="py-2 pr-3 text-slate-200">{r.tf_execute}/{r.tf_monitor}</td>
                     <td className="py-2 pr-3 text-slate-200">{formatMoney(r.max_max_before_profit_usd)}</td>
                     <td className="py-2 pr-3 text-slate-200">
-                      {r.max_max_before_profit_pct == null ? '—' : `${r.max_max_before_profit_pct.toFixed(1)}%`}
+                      {r.max_max_before_profit_pct == null ? '—' : `${r.max_max_before_profit_pct.toFixed(2)}%`}
                     </td>
                   </tr>
                 ))

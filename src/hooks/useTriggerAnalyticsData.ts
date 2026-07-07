@@ -23,6 +23,11 @@ export interface TradeTriggerAnalyticsRow {
   max_negative_floating_before_profit_pct: number | null;
   sum_negative_floating_before_profit_usd: number | null;
 
+  // Distance points fields (dari trade_floating_snapshots agregat)
+  max_negative_distance_points: number | null;         // ← TAMBAH INI
+  max_negative_distance_price_points: number | null;   // ← TAMBAH INI
+  sum_negative_distance_points: number | null;         // ← TAMBAH INI
+
   // Deep improv metrics (from trade_trigger_floating_analytics view)
   avg_max_before_profit_usd?: number | null;
   max_max_before_profit_usd?: number | null;

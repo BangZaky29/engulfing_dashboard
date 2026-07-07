@@ -11,6 +11,7 @@ import { GradeAnalysisChart } from './components/analytics/GradeAnalysisChart';
 import { SignalFunnelChart } from './components/analytics/SignalFunnelChart';
 import { HoldingTimeChart } from './components/analytics/HoldingTimeChart';
 import { TriggerFloatingAnalyticsCard } from './components/analytics/TriggerFloatingAnalyticsCard';
+import { TradePerOpTable } from './components/analytics/TradePerOpTable';
 import { ReportGallery } from './components/analytics/ReportGallery';
 import { ImageModal } from './components/ImageModal';
 import { SignalsTable } from './components/SignalsTable';
@@ -330,6 +331,9 @@ function App() {
               <div className="bg-surface rounded-xl p-6 border border-white/5 shadow-xl relative overflow-hidden group">
                 <TriggerFloatingAnalyticsCard />
               </div>
+
+              {/* ── Trade Per OP Table ── */}
+              <TradePerOpTable />
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Hourly Win Rate */}
