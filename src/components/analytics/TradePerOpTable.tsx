@@ -10,7 +10,7 @@ import { supabase } from '../../lib/supabase';
 
 // ─── Types ───────────────────────────────────────────
 interface TradeRow {
-  id: number;         // PK di DB namanya "id", bukan "trade_id"
+  trade_id: number;
   ticket_id: number;
   symbol: string;
   timeframe: string;
@@ -26,19 +26,23 @@ interface TradeRow {
   trigger_type?: string | null;
   trading_session?: string | null;
   notes?: string | null;
+  op_level_pts?: number | null;
+  op_level_pct?: number | null;
 }
 
 interface FloatSummary {
   ticket_id: number;
-  max_float_usd: number | null;   // worst floating USD (abs)
+  max_float_usd: number | null;   // worst floating USD (abs) - MAE
   max_float_pct: number | null;   // worst floating pct dari entry (abs)
   max_pts: number | null;         // max distance dalam points
+  mfe_usd: number | null;         // best floating USD - MFE
 }
 
 interface EnrichedRow extends TradeRow {
   max_float_usd: number | null;
   max_float_pct: number | null;
   max_pts: number | null;
+  mfe_usd: number | null;
   max_loss_to_sl_pct: number | null;
   op_level_pts: number | null;
   op_level_pct: number | null;
@@ -79,6 +83,7 @@ function fmtDate(iso: string | null | undefined) {
 export function TradePerOpTable() {
   const [trades, setTrades] = useState<TradeRow[]>([]);
   const [floatMap, setFloatMap] = useState<Record<number, FloatSummary>>({});
+  const [sampledTickets, setSampledTickets] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -100,9 +105,9 @@ export function TradePerOpTable() {
       setError(null);
 
       let q = supabase
-        .from('trade_analytics')
+        .from('trade_deep_analytics_view')
         .select(
-          'id,ticket_id,symbol,timeframe,mode,result,profit,op_price,sl_price,tp_price,exit_price,entry_time,exit_time,volume,trading_session,trigger_type,notes'
+          'trade_id,ticket_id,symbol,timeframe,mode,result,profit,op_price,sl_price,tp_price,exit_price,entry_time,exit_time,trading_session,trigger_type,notes,op_level_pts,op_level_pct'
         )
         .order('entry_time', { ascending: false })
         .limit(500);
@@ -135,16 +140,25 @@ export function TradePerOpTable() {
 
   const fetchFloatSummary = async (ticketIds: number[]) => {
     try {
-      // Ambil semua snapshot negatif (floating loss) per ticket
+      // Ambil semua snapshot per ticket (baik MAE maupun MFE)
       const { data, error: err } = await supabase
         .from('trade_floating_snapshots')
         .select('ticket_id,floating_profit_usd,floating_pct_from_entry,entry_price,current_price,point')
-        .in('ticket_id', ticketIds)
-        .lt('floating_profit_usd', 0); // hanya snapshot yang sedang rugi
+        .in('ticket_id', ticketIds);
 
       if (err) throw err;
 
-      // Agregasi per ticket: cari worst float
+      // Query 2 (BARU): semua ticket yg PUNYA snapshot, gak peduli nilai floating-nya
+      const { data: allSnaps, error: allErr } = await supabase
+        .from('trade_floating_snapshots')
+        .select('ticket_id')
+        .in('ticket_id', ticketIds);
+      if (allErr) throw allErr;
+
+      const sampled = new Set((allSnaps ?? []).map((r: any) => r.ticket_id as number));
+      setSampledTickets(sampled);
+
+      // Agregasi per ticket: cari worst float (MAE) dan best float (MFE)
       const map: Record<number, FloatSummary> = {};
 
       for (const snap of data ?? []) {
@@ -159,21 +173,28 @@ export function TradePerOpTable() {
         const pts = ep && cp && pt ? Math.abs(cp - ep) / pt : null;
 
         if (!map[tid]) {
-          map[tid] = { ticket_id: tid, max_float_usd: null, max_float_pct: null, max_pts: null };
+          map[tid] = { ticket_id: tid, max_float_usd: null, max_float_pct: null, max_pts: null, mfe_usd: null };
         }
 
         const cur = map[tid];
-        // worst USD = paling negatif → abs terbesar
-        if (cur.max_float_usd == null || Math.abs(usd) > cur.max_float_usd) {
-          cur.max_float_usd = Math.abs(usd);
-        }
-        // worst pct = abs terbesar
-        if (cur.max_float_pct == null || Math.abs(pct) > cur.max_float_pct) {
-          cur.max_float_pct = Math.abs(pct);
-        }
-        // worst pts
-        if (pts != null && (cur.max_pts == null || pts > cur.max_pts)) {
-          cur.max_pts = pts;
+        if (usd < 0) {
+            // worst USD = paling negatif → abs terbesar
+            if (cur.max_float_usd == null || Math.abs(usd) > cur.max_float_usd) {
+              cur.max_float_usd = Math.abs(usd);
+            }
+            // worst pct = abs terbesar
+            if (cur.max_float_pct == null || Math.abs(pct) > cur.max_float_pct) {
+              cur.max_float_pct = Math.abs(pct);
+            }
+            // worst pts
+            if (pts != null && (cur.max_pts == null || pts > cur.max_pts)) {
+              cur.max_pts = pts;
+            }
+        } else if (usd > 0) {
+            // best USD = paling positif (MFE)
+            if (cur.mfe_usd == null || usd > cur.mfe_usd) {
+              cur.mfe_usd = usd;
+            }
         }
       }
 
@@ -201,15 +222,17 @@ export function TradePerOpTable() {
       const floatUsd = floatMap[t.ticket_id]?.max_float_usd ?? (Math.abs(notesObj.max_floating_usd || 0) || null);
       const floatPts = floatMap[t.ticket_id]?.max_pts ?? (Math.abs(notesObj.max_floating_pts || 0) || null);
       const floatPct = floatMap[t.ticket_id]?.max_float_pct ?? null; // % dari asset price
+      const mfeUsd = floatMap[t.ticket_id]?.mfe_usd ?? null;
 
       return {
         ...t,
         max_float_usd: floatUsd,
         max_float_pct: floatPct,
         max_pts: floatPts,
+        mfe_usd: mfeUsd,
         max_loss_to_sl_pct: notesObj.max_loss_to_sl_pct != null ? Math.abs(notesObj.max_loss_to_sl_pct) : null,
-        op_level_pts: notesObj.op_level_pts ?? null,
-        op_level_pct: notesObj.op_level_pct ?? null,
+        op_level_pts: t.op_level_pts ?? notesObj.op_level_pts ?? null,
+        op_level_pct: t.op_level_pct ?? notesObj.op_level_pct ?? null,
         h1_trigger: notesObj.h1_trigger_source || '-',
         m15_trigger: notesObj.m15_trigger_source || '-',
         m5_trigger: notesObj.m5_trigger_source || '-',
@@ -368,6 +391,9 @@ export function TradePerOpTable() {
                   <span className="text-blue-400">OP Level</span>
                 </th>
                 <th className="px-4 py-3 text-xs text-slate-400 font-medium text-right">
+                  <span className="text-emerald-400">MFE (USD)</span>
+                </th>
+                <th className="px-4 py-3 text-xs text-slate-400 font-medium text-right">
                   <span className="text-orange-400">Max Float (USD)</span>
                 </th>
                 <th className="px-4 py-3 text-xs text-slate-400 font-medium text-right">
@@ -466,14 +492,27 @@ export function TradePerOpTable() {
                         )}
                       </td>
 
+                      {/* MFE USD */}
+                      <td className="px-4 py-3 text-right font-mono text-sm">
+                        {row.mfe_usd != null ? (
+                          <span className="text-emerald-400 font-semibold">
+                            +{fmtMoney(row.mfe_usd)}
+                          </span>
+                        ) : (
+                          <span className="text-slate-600 text-xs">—</span>
+                        )}
+                      </td>
+
                       {/* Max Float USD */}
                       <td className="px-4 py-3 text-right font-mono text-sm">
                         {hasFloat ? (
                           <span className="text-orange-400 font-semibold">
                             -{fmtMoney(row.max_float_usd)}
                           </span>
+                        ) : sampledTickets.has(row.ticket_id) ? (
+                          <span className="text-emerald-500 text-xs" title="Ada snapshot, tapi floating gak pernah minus">selalu profit</span>
                         ) : (
-                          <span className="text-slate-600 text-xs">no data</span>
+                          <span className="text-slate-600 text-xs" title="Belum sempat ke-sample (trade closed instan / data lama)">data gap</span>
                         )}
                       </td>
 

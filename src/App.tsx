@@ -10,7 +10,7 @@ import { PatternClusterAnalysis } from './components/analytics/PatternClusterAna
 import { GradeAnalysisChart } from './components/analytics/GradeAnalysisChart';
 import { SignalFunnelChart } from './components/analytics/SignalFunnelChart';
 import { HoldingTimeChart } from './components/analytics/HoldingTimeChart';
-import { TriggerFloatingAnalyticsCard } from './components/analytics/TriggerFloatingAnalyticsCard';
+
 import { TradePerOpTable } from './components/analytics/TradePerOpTable';
 import { ReportGallery } from './components/analytics/ReportGallery';
 import { ImageModal } from './components/ImageModal';
@@ -327,10 +327,7 @@ function App() {
         {activeTab === 'DEEP_ANALYTICS' && (
           <div className="space-y-6 animate-in fade-in duration-300">
             <div className="space-y-6">
-              {/* Trigger Analytics moved to top */}
-              <div className="bg-surface rounded-xl p-6 border border-white/5 shadow-xl relative overflow-hidden group">
-                <TriggerFloatingAnalyticsCard />
-              </div>
+
 
               {/* ── Trade Per OP Table ── */}
               <TradePerOpTable />

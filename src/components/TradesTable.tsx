@@ -20,6 +20,7 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
   const [filterSymbol, setFilterSymbol] = useState<string>('ALL');
   const [filterGrade, setFilterGrade] = useState<string>('ALL');
   const [filterSession, setFilterSession] = useState<string>('ALL');
+  const [filterTicket, setFilterTicket] = useState<string>('');
   const [filterDate, setFilterDate] = useState<string>('');
   const [filterTimeFrom, setFilterTimeFrom] = useState<string>('');
   const [filterTimeTo, setFilterTimeTo] = useState<string>('');
@@ -60,6 +61,11 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
         matchDate = tradeDateStr === filterDate;
       }
 
+      let matchTicket = true;
+      if (filterTicket.trim() !== '') {
+        matchTicket = trade.ticket_id.toString().includes(filterTicket.trim());
+      }
+
       // Filter jam hanya berlaku jika filter tanggal juga aktif
       let matchTime = true;
       if (filterDate && (filterTimeFrom || filterTimeTo)) {
@@ -68,9 +74,9 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
         if (filterTimeTo && tradeHHmm > filterTimeTo) matchTime = false;
       }
 
-      return matchMode && matchResult && matchSymbol && matchGrade && matchDate && matchTime && matchSession;
+      return matchMode && matchResult && matchSymbol && matchGrade && matchDate && matchTime && matchSession && matchTicket;
     });
-  }, [trades, filterMode, filterResult, filterSymbol, filterGrade, filterSession, filterDate, filterTimeFrom, filterTimeTo]);
+  }, [trades, filterMode, filterResult, filterSymbol, filterGrade, filterSession, filterDate, filterTimeFrom, filterTimeTo, filterTicket]);
 
   // Cek apakah ada filter aktif
   const isAnyFilterActive =
@@ -79,6 +85,7 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
     filterSymbol !== 'ALL' ||
     filterGrade !== 'ALL' ||
     filterSession !== 'ALL' ||
+    filterTicket !== '' ||
     filterDate !== '' ||
     filterTimeFrom !== '' ||
     filterTimeTo !== '';
@@ -105,6 +112,7 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
     if (filterMode !== 'ALL') parts.push(filterMode);
     if (filterResult !== 'ALL') parts.push(filterResult);
     if (filterSymbol !== 'ALL') parts.push(filterSymbol);
+    if (filterTicket) parts.push(`Ticket ${filterTicket}`);
     if (filterGrade !== 'ALL') parts.push(`Grade ${filterGrade}`);
     if (filterSession !== 'ALL') parts.push(`Sesi ${filterSession}`);
     if (filterDate) {
@@ -115,11 +123,11 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
       parts.push(datePart);
     }
     return parts.join(' · ');
-  }, [filterMode, filterResult, filterSymbol, filterGrade, filterSession, filterDate, filterTimeFrom, filterTimeTo]);
+  }, [filterMode, filterResult, filterSymbol, filterGrade, filterSession, filterDate, filterTimeFrom, filterTimeTo, filterTicket]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterMode, filterResult, filterSymbol, filterGrade, filterSession, filterDate, filterTimeFrom, filterTimeTo, trades]);
+  }, [filterMode, filterResult, filterSymbol, filterGrade, filterSession, filterDate, filterTimeFrom, filterTimeTo, filterTicket, trades]);
 
   // Clear jam filter
   const clearTimeFilter = () => {
@@ -207,6 +215,26 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
               <option key={sym} value={sym}>{sym}</option>
             ))}
           </select>
+
+          {/* Filter Ticket */}
+          <div className="relative flex items-center">
+            <input
+              type="text"
+              placeholder="Cari Ticket ID..."
+              value={filterTicket}
+              onChange={(e) => setFilterTicket(e.target.value)}
+              className="bg-slate-800 border border-slate-700 text-sm rounded-lg px-3 py-1.5 text-slate-200 focus:outline-none focus:border-primary placeholder:text-slate-500 w-36"
+            />
+            {filterTicket && (
+              <button
+                onClick={() => setFilterTicket('')}
+                className="absolute right-2 text-slate-400 hover:text-white transition-colors"
+                title="Clear Ticket"
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
 
           {/* Filter Session */}
           <select
