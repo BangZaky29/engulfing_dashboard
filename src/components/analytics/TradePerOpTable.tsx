@@ -7,6 +7,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
+import { DateRangePicker } from '../ui/DateRangePicker';
 
 // ─── Types ───────────────────────────────────────────
 interface TradeRow {
@@ -107,7 +108,7 @@ export function TradePerOpTable() {
       let q = supabase
         .from('trade_deep_analytics_view')
         .select(
-          'trade_id,ticket_id,symbol,timeframe,mode,result,profit,op_price,sl_price,tp_price,exit_price,entry_time,exit_time,trading_session,trigger_type,notes,op_level_pts,op_level_pct'
+          'trade_id,ticket_id,symbol,timeframe,mode,result,profit,op_price,sl_price,tp_price,exit_price,entry_time,exit_time,trading_session,trigger_type,notes'
         )
         .order('entry_time', { ascending: false })
         .limit(500);
@@ -206,8 +207,7 @@ export function TradePerOpTable() {
 
   useEffect(() => {
     void fetchTrades();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [dateFrom, dateTo, symbol, mode, result]);
 
   // ── Enriched rows ──
   const enriched: EnrichedRow[] = useMemo(() => {
@@ -264,38 +264,20 @@ export function TradePerOpTable() {
     <div className="space-y-4">
       {/* ── Header ── */}
       <div className="bg-surface rounded-xl p-6 border border-white/5 shadow-xl">
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
-            <h2 className="text-lg font-semibold text-white">Trade Per OP — Detail Profit/Loss & Floating</h2>
-          </div>
-          <button
-            onClick={() => fetchTrades()}
-            disabled={loading}
-            className="bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg border border-slate-700 text-slate-200 text-sm disabled:opacity-50"
-          >
-            {loading ? 'Loading...' : 'Filter & Refresh'}
-          </button>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
+          <h2 className="text-lg font-semibold text-white">Trade Per OP — Detail Profit/Loss & Floating</h2>
         </div>
 
         {/* ── Filter bar ── */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-          <div>
-            <label className="text-xs text-slate-400 block mb-1">Date From</label>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={e => setDateFrom(e.target.value)}
-              className="w-full bg-slate-900/30 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-slate-400 block mb-1">Date To</label>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={e => setDateTo(e.target.value)}
-              className="w-full bg-slate-900/30 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm"
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+          <div className="md:col-span-1">
+            <label className="text-xs text-slate-400 block mb-1">Date Range</label>
+            <DateRangePicker
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onChange={(f, t) => { setDateFrom(f); setDateTo(t); }}
+              className="w-full"
             />
           </div>
           <div>
@@ -409,13 +391,13 @@ export function TradePerOpTable() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={12} className="px-4 py-8 text-center text-slate-400 text-sm">
+                  <td colSpan={14} className="px-4 py-8 text-center text-slate-400 text-sm">
                     Memuat data...
                   </td>
                 </tr>
               ) : pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={12} className="px-4 py-8 text-center text-slate-400 text-sm">
+                  <td colSpan={14} className="px-4 py-8 text-center text-slate-400 text-sm">
                     Tidak ada data. Coba ubah filter atau jalankan bot dulu.
                   </td>
                 </tr>

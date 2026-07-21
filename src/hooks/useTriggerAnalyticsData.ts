@@ -40,6 +40,14 @@ export interface TradeTriggerAnalyticsRow {
   avg_max_before_profit_usd_pct_based?: number | null;
   avg_total_distance_price_pct_based?: number | null;
   sum_total_distance_price_pct_based?: number | null;
+
+  // Opsi C (MFE positif — mirror dari Opsi A/B negatif)
+  max_positive_floating_before_loss_usd: number | null;
+  max_positive_floating_before_loss_pct: number | null;
+  sum_positive_floating_before_loss_usd: number | null;
+  max_positive_distance_points: number | null;
+  max_positive_distance_price_points: number | null;
+  sum_positive_distance_points: number | null;
 }
 
 

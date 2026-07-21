@@ -23,6 +23,7 @@ export interface TradeAnalytics {
   trading_session?: string | null;
   exit_price?: number | null;
   trade_volume?: number | null;
+  trigger_type?: string | null;
   prev_open?: number;
   prev_close?: number;
   prev_high?: number;

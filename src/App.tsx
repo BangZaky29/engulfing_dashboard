@@ -12,6 +12,7 @@ import { SignalFunnelChart } from './components/analytics/SignalFunnelChart';
 import { HoldingTimeChart } from './components/analytics/HoldingTimeChart';
 
 import { TradePerOpTable } from './components/analytics/TradePerOpTable';
+import { TriggerFloatingAnalyticsCard } from './components/analytics/TriggerFloatingAnalyticsCard';
 import { ReportGallery } from './components/analytics/ReportGallery';
 import { ImageModal } from './components/ImageModal';
 import { SignalsTable } from './components/SignalsTable';
@@ -331,6 +332,9 @@ function App() {
 
               {/* ── Trade Per OP Table ── */}
               <TradePerOpTable />
+
+              {/* ── Trigger Floating Analytics (Opsi A/B/C/D) ── */}
+              <TriggerFloatingAnalyticsCard />
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Hourly Win Rate */}

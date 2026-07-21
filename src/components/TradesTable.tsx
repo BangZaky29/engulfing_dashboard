@@ -2,8 +2,9 @@ import { useState, useMemo, useEffect } from 'react';
 import type { TradeAnalytics } from '../types';
 import { format } from 'date-fns';
 import { cn, getSessionGroup, getSummerFlag } from '../lib/utils';
-import { ImageIcon, Filter, Clock, TrendingUp, TrendingDown, BarChart2, X, Globe, Trash2, AlertTriangle } from 'lucide-react';
+import { Filter, Image as ImageIcon, X, Clock, TrendingUp, TrendingDown, BarChart2, Trash2, AlertTriangle, Globe } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { DateRangePicker } from './ui/DateRangePicker';
 import { useLanguage } from '../lib/i18n';
 
 interface TradesTableProps {
@@ -21,7 +22,8 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
   const [filterGrade, setFilterGrade] = useState<string>('ALL');
   const [filterSession, setFilterSession] = useState<string>('ALL');
   const [filterTicket, setFilterTicket] = useState<string>('');
-  const [filterDate, setFilterDate] = useState<string>('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [filterTimeFrom, setFilterTimeFrom] = useState<string>('');
   const [filterTimeTo, setFilterTimeTo] = useState<string>('');
 
@@ -51,32 +53,34 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
           const n = JSON.parse(trade.notes);
           tradeGrade = n.grade || '-';
         }
-      } catch (e) {}
-      
+      } catch (e) { }
+
       const matchGrade = filterGrade === 'ALL' || tradeGrade === filterGrade;
 
-      let matchDate = true;
-      if (filterDate) {
-        const tradeDateStr = new Date(trade.trade_created_at).toISOString().split('T')[0];
-        matchDate = tradeDateStr === filterDate;
-      }
+      const matchDate = () => {
+        if (!dateFrom && !dateTo) return true;
+        const entryDate = trade.trade_created_at.split('T')[0];
+        if (dateFrom && dateTo) return entryDate >= dateFrom && entryDate <= dateTo;
+        if (dateFrom) return entryDate >= dateFrom;
+        if (dateTo) return entryDate <= dateTo;
+        return true;
+      };
 
       let matchTicket = true;
       if (filterTicket.trim() !== '') {
         matchTicket = trade.ticket_id.toString().includes(filterTicket.trim());
       }
 
-      // Filter jam hanya berlaku jika filter tanggal juga aktif
       let matchTime = true;
-      if (filterDate && (filterTimeFrom || filterTimeTo)) {
+      if ((dateFrom || dateTo) && (filterTimeFrom || filterTimeTo)) {
         const tradeHHmm = format(new Date(trade.trade_created_at), 'HH:mm');
         if (filterTimeFrom && tradeHHmm < filterTimeFrom) matchTime = false;
         if (filterTimeTo && tradeHHmm > filterTimeTo) matchTime = false;
       }
 
-      return matchMode && matchResult && matchSymbol && matchGrade && matchDate && matchTime && matchSession && matchTicket;
+      return matchMode && matchResult && matchSymbol && matchGrade && matchDate() && matchTime && matchSession && matchTicket;
     });
-  }, [trades, filterMode, filterResult, filterSymbol, filterGrade, filterSession, filterDate, filterTimeFrom, filterTimeTo, filterTicket]);
+  }, [trades, filterMode, filterResult, filterSymbol, filterGrade, filterSession, dateFrom, dateTo, filterTimeFrom, filterTimeTo, filterTicket, dstMode]);
 
   // Cek apakah ada filter aktif
   const isAnyFilterActive =
@@ -86,7 +90,8 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
     filterGrade !== 'ALL' ||
     filterSession !== 'ALL' ||
     filterTicket !== '' ||
-    filterDate !== '' ||
+    dateFrom !== '' ||
+    dateTo !== '' ||
     filterTimeFrom !== '' ||
     filterTimeTo !== '';
 
@@ -115,19 +120,29 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
     if (filterTicket) parts.push(`Ticket ${filterTicket}`);
     if (filterGrade !== 'ALL') parts.push(`Grade ${filterGrade}`);
     if (filterSession !== 'ALL') parts.push(`Sesi ${filterSession}`);
-    if (filterDate) {
-      let datePart = filterDate;
-      if (filterTimeFrom || filterTimeTo) {
-        datePart += ` | ${filterTimeFrom || '00:00'} – ${filterTimeTo || '23:59'}`;
+    if (dateFrom || dateTo) {
+      let datePart = '';
+      if (dateFrom && dateTo && dateFrom !== dateTo) {
+        datePart = `${dateFrom} - ${dateTo}`;
+      } else if (dateFrom || dateTo) {
+        datePart = dateFrom || dateTo;
       }
-      parts.push(datePart);
+      if (filterTimeFrom || filterTimeTo) {
+        let timePart = '';
+        if (filterTimeFrom && filterTimeTo) timePart = `${filterTimeFrom}-${filterTimeTo}`;
+        else if (filterTimeFrom) timePart = `>=${filterTimeFrom}`;
+        else if (filterTimeTo) timePart = `<=${filterTimeTo}`;
+        parts.push(`Waktu: ${datePart} (${timePart})`);
+      } else {
+        parts.push(`Tanggal: ${datePart}`);
+      }
     }
     return parts.join(' · ');
-  }, [filterMode, filterResult, filterSymbol, filterGrade, filterSession, filterDate, filterTimeFrom, filterTimeTo, filterTicket]);
+  }, [filterMode, filterResult, filterSymbol, filterGrade, filterSession, dateFrom, dateTo, filterTimeFrom, filterTimeTo, filterTicket]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterMode, filterResult, filterSymbol, filterGrade, filterSession, filterDate, filterTimeFrom, filterTimeTo, filterTicket, trades]);
+  }, [filterMode, filterResult, filterSymbol, filterGrade, filterSession, dateFrom, dateTo, filterTimeFrom, filterTimeTo, filterTicket, trades]);
 
   // Clear jam filter
   const clearTimeFilter = () => {
@@ -148,20 +163,20 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
     try {
       const r1 = await supabase.from('wa_outbox').delete().eq('ticket_id', tradeToDelete);
       if (r1.error) throw new Error(`wa_outbox: ${r1.error.message}`);
-      
+
       const r2 = await supabase.from('trade_active_logs').delete().eq('ticket_id', tradeToDelete);
       if (r2.error) throw new Error(`trade_active_logs: ${r2.error.message}`);
-      
+
       const r3 = await supabase.from('trade_analytics').delete().eq('ticket_id', tradeToDelete);
       if (r3.error) throw new Error(`trade_analytics: ${r3.error.message}`);
-      
+
       const r4 = await supabase.from('engulfing_signals').delete().eq('ticket_id', tradeToDelete);
       if (r4.error) throw new Error(`engulfing_signals: ${r4.error.message}`);
-      
+
       // Tampilkan notifikasi sukses
       setSuccessToast(`Tiket #${tradeToDelete} berhasil dihapus secara permanen dari semua tabel analisa.`);
       setTimeout(() => setSuccessToast(null), 5000);
-      
+
     } catch (error: any) {
       console.error("Gagal menghapus tiket:", error);
       alert("Gagal menghapus data! Pesan error: " + error.message);
@@ -273,35 +288,20 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
           </select>
 
           {/* Date Picker Filter */}
-          <div className="relative flex items-center">
-            <input
-              type="date"
-              value={filterDate}
-              onChange={(e) => {
-                setFilterDate(e.target.value);
-                if (!e.target.value) {
-                  clearTimeFilter();
-                }
-              }}
-              className="bg-slate-800 border border-slate-700 text-sm rounded-lg pl-3 pr-8 py-1.5 text-slate-200 focus:outline-none focus:border-primary [color-scheme:dark]"
-              title="Filter by Specific Date"
-            />
-            {filterDate && (
-              <button
-                onClick={() => {
-                  setFilterDate('');
-                  clearTimeFilter();
-                }}
-                className="absolute right-2 text-slate-400 hover:text-white transition-colors"
-                title="Clear Date Filter"
-              >
-                <X size={13} />
-              </button>
-            )}
-          </div>
+          <DateRangePicker
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onChange={(f, t) => {
+              setDateFrom(f);
+              setDateTo(t);
+              if (!f && !t) clearTimeFilter();
+            }}
+            className="bg-slate-800 border-slate-700 h-[34px]"
+            placeholder="Select Date"
+          />
 
           {/* Filter Jam */}
-          {filterDate && (
+          {(dateFrom || dateTo) && (
             <div className="flex items-center gap-2 border-l border-slate-700 pl-3">
               <Clock size={14} className="text-primary shrink-0" />
               <span className="text-xs text-muted shrink-0">{t('timeFrom')}</span>
@@ -565,17 +565,17 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
                               <span className={cn(
                                 "px-2 py-0.5 rounded text-xs font-bold",
                                 g.startsWith('A') ? "bg-success/20 text-success" :
-                                g.startsWith('B') ? "bg-primary/20 text-primary" :
-                                g.startsWith('C') ? "bg-amber-400/20 text-amber-400" :
-                                g === '-' ? "bg-slate-700 text-slate-300" :
-                                g === 'N/A' ? "bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30" :
-                                "bg-danger/20 text-danger"
+                                  g.startsWith('B') ? "bg-primary/20 text-primary" :
+                                    g.startsWith('C') ? "bg-amber-400/20 text-amber-400" :
+                                      g === '-' ? "bg-slate-700 text-slate-300" :
+                                        g === 'N/A' ? "bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30" :
+                                          "bg-danger/20 text-danger"
                               )}>{g}</span>
                               {sb && <span className="text-[9px] text-muted font-mono tracking-tight whitespace-nowrap">{sb}</span>}
                               {ring && <span className="text-[10px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded-sm whitespace-nowrap border border-slate-700">{ring}</span>}
                             </div>
                           );
-                        } catch(e) {
+                        } catch (e) {
                           return <span className="text-xs text-muted">-</span>;
                         }
                       })()}
@@ -595,7 +595,7 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
                               <span className="text-emerald-400">M5: {m5}</span>
                             </div>
                           );
-                        } catch(e) { return <span className="text-muted">-</span>; }
+                        } catch (e) { return <span className="text-muted">-</span>; }
                       })()}
                     </td>
                     <td className="hidden lg:table-cell px-6 py-4 text-xs">
@@ -613,7 +613,7 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
                               <span className="text-[10px] text-danger font-medium bg-danger/10 px-1.5 py-0.5 rounded-sm border border-danger/20">MFE: -${fUsd} ({fPts} pts | {fPct}%)</span>
                             </div>
                           );
-                        } catch(e) { return <span className="text-muted">-</span>; }
+                        } catch (e) { return <span className="text-muted">-</span>; }
                       })()}
                     </td>
                     <td className="px-3 md:px-6 py-3 md:py-4 text-center">
@@ -685,7 +685,7 @@ export function TradesTable({ trades, onImageClick, dstMode }: TradesTableProps)
             </div>
             <h3 className="text-lg font-bold text-slate-100 text-center mb-2">Hapus Riwayat Trading?</h3>
             <p className="text-sm text-slate-300 text-center mb-6">
-              Apakah Anda yakin ingin menghapus tiket <span className="font-mono text-danger font-bold">#{tradeToDelete}</span>? Menghapus tiket ini akan menghapus riwayat dari tabel analisis, log aktif, antrean pesan, dan sinyal. <br/><br/>Aksi ini tidak dapat dibatalkan.
+              Apakah Anda yakin ingin menghapus tiket <span className="font-mono text-danger font-bold">#{tradeToDelete}</span>? Menghapus tiket ini akan menghapus riwayat dari tabel analisis, log aktif, antrean pesan, dan sinyal. <br /><br />Aksi ini tidak dapat dibatalkan.
             </p>
             <div className="flex items-center justify-end gap-3">
               <button

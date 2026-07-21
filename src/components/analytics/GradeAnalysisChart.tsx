@@ -13,6 +13,7 @@ import {
   Legend
 } from 'recharts';
 import type { TradeAnalytics } from '../../types';
+import { DateRangePicker } from '../ui/DateRangePicker';
 
 interface GradeAnalysisChartProps {
   trades: TradeAnalytics[];
@@ -20,7 +21,8 @@ interface GradeAnalysisChartProps {
 
 export function GradeAnalysisChart({ trades }: GradeAnalysisChartProps) {
   const [selectedSymbol, setSelectedSymbol] = useState<string>('ALL');
-  const [filterDate, setFilterDate] = useState<string>('');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
   const [filterTimeFrom, setFilterTimeFrom] = useState<string>('');
   const [filterTimeTo, setFilterTimeTo] = useState<string>('');
 
@@ -40,16 +42,15 @@ export function GradeAnalysisChart({ trades }: GradeAnalysisChartProps) {
       if (selectedSymbol !== 'ALL' && t.symbol !== selectedSymbol) return false;
       
       // Filter Date
-      if (filterDate) {
-        const tradeDateStr = new Date(t.trade_created_at).toISOString().split('T')[0];
-        if (tradeDateStr !== filterDate) return false;
+      const tradeDateStr = new Date(t.trade_created_at).toISOString().split('T')[0];
+      if (dateFrom && tradeDateStr < dateFrom) return false;
+      if (dateTo && tradeDateStr > dateTo) return false;
         
-        // Filter Time
-        if (filterTimeFrom || filterTimeTo) {
-          const tradeHHmm = format(new Date(t.trade_created_at), 'HH:mm');
-          if (filterTimeFrom && tradeHHmm < filterTimeFrom) return false;
-          if (filterTimeTo && tradeHHmm > filterTimeTo) return false;
-        }
+      // Filter Time
+      if (filterTimeFrom || filterTimeTo) {
+        const tradeHHmm = format(new Date(t.trade_created_at), 'HH:mm');
+        if (filterTimeFrom && tradeHHmm < filterTimeFrom) return false;
+        if (filterTimeTo && tradeHHmm > filterTimeTo) return false;
       }
       return true;
     });
@@ -92,7 +93,7 @@ export function GradeAnalysisChart({ trades }: GradeAnalysisChartProps) {
         lossCount: summary[g].loss
       };
     }).filter(item => item.totalTrades > 0);
-  }, [trades, selectedSymbol, filterDate, filterTimeFrom, filterTimeTo]);
+  }, [trades, selectedSymbol, dateFrom, dateTo, filterTimeFrom, filterTimeTo]);
 
   if (data.length === 0) {
     return (
@@ -156,30 +157,19 @@ export function GradeAnalysisChart({ trades }: GradeAnalysisChartProps) {
 
         {/* Date and Time Filters */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex items-center">
-            <input
-              type="date"
-              value={filterDate}
-              onChange={(e) => {
-                setFilterDate(e.target.value);
-                if (!e.target.value) clearTimeFilter();
-              }}
-              className="bg-slate-800 border border-slate-700 text-sm rounded-lg pl-3 pr-8 py-1.5 text-slate-200 focus:outline-none focus:border-primary [color-scheme:dark]"
-            />
-            {filterDate && (
-              <button
-                onClick={() => {
-                  setFilterDate('');
-                  clearTimeFilter();
-                }}
-                className="absolute right-2 text-slate-400 hover:text-white transition-colors"
-              >
-                <X size={13} />
-              </button>
-            )}
-          </div>
+          <DateRangePicker
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onChange={(f, t) => {
+              setDateFrom(f);
+              setDateTo(t);
+              if (!f && !t) clearTimeFilter();
+            }}
+            className="bg-slate-800 border-slate-700 h-[34px]"
+            placeholder="Select Date"
+          />
 
-          {filterDate && (
+          {(dateFrom || dateTo) && (
             <div className="flex items-center gap-2 border-l border-slate-700 pl-3">
               <Clock size={14} className="text-primary shrink-0" />
               <input

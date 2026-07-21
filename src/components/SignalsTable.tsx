@@ -3,6 +3,7 @@ import type { EngulfingSignal } from '../types';
 import { format } from 'date-fns';
 import { cn, getSessionGroup, getSummerFlag } from '../lib/utils';
 import { Filter, CheckCircle, AlertTriangle, ArrowUpRight, ArrowDownRight, Globe, Shield, Clock, X } from 'lucide-react';
+import { DateRangePicker } from './ui/DateRangePicker';
 
 interface SignalsTableProps {
   signals: EngulfingSignal[];
@@ -25,7 +26,8 @@ export function SignalsTable({ signals, dstMode }: SignalsTableProps) {
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [filterSession, setFilterSession] = useState<string>('ALL');
   const [filterStrategy, setFilterStrategy] = useState<string>('ALL');
-  const [filterDate, setFilterDate] = useState<string>('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [filterTimeFrom, setFilterTimeFrom] = useState<string>('');
   const [filterTimeTo, setFilterTimeTo] = useState<string>('');
   
@@ -79,6 +81,15 @@ export function SignalsTable({ signals, dstMode }: SignalsTableProps) {
       const matchGrade = filterGrade === 'ALL' || sig.grade === filterGrade;
       const matchSession = filterSession === 'ALL' || getSessionGroup(sig, dstMode) === filterSession;
       
+      const matchDate = () => {
+        if (!dateFrom && !dateTo) return true;
+        const sigDate = sig.signal_time.split('T')[0];
+        if (dateFrom && dateTo) return sigDate >= dateFrom && sigDate <= dateTo;
+        if (dateFrom) return sigDate >= dateFrom;
+        if (dateTo) return sigDate <= dateTo;
+        return true;
+      };
+
       let matchStrategy = true;
       if (filterStrategy === 'FILTER_A') {
         matchStrategy = sig.grade !== 'N/A';
@@ -97,27 +108,21 @@ export function SignalsTable({ signals, dstMode }: SignalsTableProps) {
         matchStatus = isInfo;
       }
 
-      let matchDate = true;
-      if (filterDate) {
-        const sigDateStr = new Date(sig.signal_time).toISOString().split('T')[0];
-        matchDate = sigDateStr === filterDate;
-      }
-
       let matchTime = true;
-      if (filterDate && (filterTimeFrom || filterTimeTo)) {
+      if ((dateFrom || dateTo) && (filterTimeFrom || filterTimeTo)) {
         const sigHHmm = format(new Date(sig.signal_time), 'HH:mm');
         if (filterTimeFrom && sigHHmm < filterTimeFrom) matchTime = false;
         if (filterTimeTo && sigHHmm > filterTimeTo) matchTime = false;
       }
 
-      return matchSymbol && matchDirection && matchGrade && matchStatus && matchSession && matchStrategy && matchDate && matchTime;
+      return matchSymbol && matchDirection && matchGrade && matchStatus && matchSession && matchStrategy && matchDate() && matchTime;
     });
-  }, [parsedSignals, filterSymbol, filterDirection, filterGrade, filterStatus, filterSession, filterStrategy, filterDate, filterTimeFrom, filterTimeTo]);
+  }, [parsedSignals, filterSymbol, filterDirection, filterGrade, filterStatus, filterSession, filterStrategy, dateFrom, dateTo, filterTimeFrom, filterTimeTo, dstMode]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterSymbol, filterDirection, filterGrade, filterStatus, filterSession, filterStrategy, filterDate, filterTimeFrom, filterTimeTo, signals]);
+  }, [filterSymbol, filterDirection, filterGrade, filterStatus, filterSession, filterStrategy, dateFrom, dateTo, filterTimeFrom, filterTimeTo, signals]);
 
   const stats = useMemo(() => {
     // Only count genuine OP signals for total, confirmed, skipped
@@ -295,35 +300,20 @@ export function SignalsTable({ signals, dstMode }: SignalsTableProps) {
           </select>
 
           {/* Date Picker Filter */}
-          <div className="relative flex items-center">
-            <input
-              type="date"
-              value={filterDate}
-              onChange={(e) => {
-                setFilterDate(e.target.value);
-                if (!e.target.value) {
-                  clearTimeFilter();
-                }
-              }}
-              className="bg-slate-800 border border-slate-700 text-sm rounded-lg pl-3 pr-8 py-1.5 text-slate-200 focus:outline-none focus:border-primary [color-scheme:dark]"
-              title="Filter by Specific Date"
-            />
-            {filterDate && (
-              <button
-                onClick={() => {
-                  setFilterDate('');
-                  clearTimeFilter();
-                }}
-                className="absolute right-2 text-slate-400 hover:text-white transition-colors"
-                title="Clear Date Filter"
-              >
-                <X size={13} />
-              </button>
-            )}
-          </div>
+          <DateRangePicker
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onChange={(f, t) => {
+              setDateFrom(f);
+              setDateTo(t);
+              if (!f && !t) clearTimeFilter();
+            }}
+            className="bg-slate-800 border-slate-700 h-[34px]"
+            placeholder="Select Date"
+          />
 
           {/* Filter Jam */}
-          {filterDate && (
+          {(dateFrom || dateTo) && (
             <div className="flex items-center gap-2 border-l border-slate-700 pl-3">
               <Clock size={14} className="text-primary shrink-0" />
               <span className="text-xs text-muted shrink-0">Dari Jam</span>

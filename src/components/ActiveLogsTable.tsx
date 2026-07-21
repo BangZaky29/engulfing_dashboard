@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { TradeActiveLog } from '../types';
 import { format } from 'date-fns';
+import { DateRangePicker } from './ui/DateRangePicker';
 import { cn, getSessionGroup, getSummerFlag } from '../lib/utils';
 import { Filter, CheckCircle, ArrowUpRight, ArrowDownRight, Globe, Trash2, Clock, ImageIcon, X } from 'lucide-react';
 
@@ -16,7 +17,8 @@ export function ActiveLogsTable({ logs, onImageClick, dstMode }: ActiveLogsTable
   const [filterDirection, setFilterDirection] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [filterSession, setFilterSession] = useState<string>('ALL');
-  const [filterDate, setFilterDate] = useState<string>('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [filterTimeFrom, setFilterTimeFrom] = useState<string>('');
   const [filterTimeTo, setFilterTimeTo] = useState<string>('');
   
@@ -67,27 +69,30 @@ export function ActiveLogsTable({ logs, onImageClick, dstMode }: ActiveLogsTable
         matchStatus = log.status === filterStatus;
       }
 
-      let matchDate = true;
-      if (filterDate) {
-        const logDateStr = new Date(log.created_at).toISOString().split('T')[0];
-        matchDate = logDateStr === filterDate;
-      }
+      const matchDate = () => {
+        if (!dateFrom && !dateTo) return true;
+        const logDate = log.created_at.split('T')[0];
+        if (dateFrom && dateTo) return logDate >= dateFrom && logDate <= dateTo;
+        if (dateFrom) return logDate >= dateFrom;
+        if (dateTo) return logDate <= dateTo;
+        return true;
+      };
 
       let matchTime = true;
-      if (filterDate && (filterTimeFrom || filterTimeTo)) {
+      if ((dateFrom || dateTo) && (filterTimeFrom || filterTimeTo)) {
         const logHHmm = format(new Date(log.created_at), 'HH:mm');
         if (filterTimeFrom && logHHmm < filterTimeFrom) matchTime = false;
         if (filterTimeTo && logHHmm > filterTimeTo) matchTime = false;
       }
 
-      return matchSymbol && matchDirection && matchSession && matchStatus && matchDate && matchTime;
+      return matchSymbol && matchDirection && matchSession && matchStatus && matchDate() && matchTime;
     });
-  }, [parsedLogs, filterSymbol, filterDirection, filterSession, filterStatus, filterDate, filterTimeFrom, filterTimeTo]);
+  }, [parsedLogs, filterSymbol, filterDirection, filterSession, filterStatus, dateFrom, dateTo, filterTimeFrom, filterTimeTo, dstMode]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterSymbol, filterDirection, filterSession, filterStatus, filterDate, filterTimeFrom, filterTimeTo, logs]);
+  }, [filterSymbol, filterDirection, filterSession, filterStatus, dateFrom, dateTo, filterTimeFrom, filterTimeTo, logs]);
 
   const stats = useMemo(() => {
     const total = filteredLogs.length;
@@ -255,35 +260,20 @@ export function ActiveLogsTable({ logs, onImageClick, dstMode }: ActiveLogsTable
           </select>
 
           {/* Date Picker Filter */}
-          <div className="relative flex items-center">
-            <input
-              type="date"
-              value={filterDate}
-              onChange={(e) => {
-                setFilterDate(e.target.value);
-                if (!e.target.value) {
-                  clearTimeFilter();
-                }
-              }}
-              className="bg-slate-800 border border-slate-700 text-sm rounded-lg pl-3 pr-8 py-1.5 text-slate-200 focus:outline-none focus:border-primary [color-scheme:dark]"
-              title="Filter by Specific Date"
-            />
-            {filterDate && (
-              <button
-                onClick={() => {
-                  setFilterDate('');
-                  clearTimeFilter();
-                }}
-                className="absolute right-2 text-slate-400 hover:text-white transition-colors"
-                title="Clear Date Filter"
-              >
-                <X size={13} />
-              </button>
-            )}
-          </div>
+          <DateRangePicker
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onChange={(f, t) => {
+              setDateFrom(f);
+              setDateTo(t);
+              if (!f && !t) clearTimeFilter();
+            }}
+            className="bg-slate-800 border-slate-700 h-[34px]"
+            placeholder="Select Date"
+          />
 
           {/* Filter Jam */}
-          {filterDate && (
+          {(dateFrom || dateTo) && (
             <div className="flex items-center gap-2 border-l border-slate-700 pl-3">
               <Clock size={14} className="text-primary shrink-0" />
               <span className="text-xs text-muted shrink-0">Dari Jam</span>

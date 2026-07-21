@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import type { TradeTriggerAnalyticsRow } from '../../hooks/useTriggerAnalyticsData';
 import { useTriggerAnalyticsData } from '../../hooks/useTriggerAnalyticsData';
-
+import { DateRangePicker } from '../ui/DateRangePicker';
 import { StatCard } from '../StatCard';
 
 // NOTE: formatPct tidak dipakai saat ini (warning TS bisa diabaikan atau dihapus bila perlu)
@@ -40,6 +40,12 @@ const CSV_COLUMNS: Array<keyof TradeTriggerAnalyticsRow> = [
   'avg_max_before_profit_usd_pct_based',
   'avg_total_distance_price_pct_based',
   'sum_total_distance_price_pct_based',
+
+  // Opsi C (MFE positif — mirror Opsi A/B)
+  'max_positive_floating_before_loss_usd',
+  'max_positive_floating_before_loss_pct',
+  'sum_positive_floating_before_loss_usd',
+  'max_positive_distance_points',
 ];
 
 function toCsvValue(v: unknown) {
@@ -153,6 +159,13 @@ export function TriggerFloatingAnalyticsCard() {
     }
   };
 
+  useEffect(() => {
+    // Prevent initial auto-fetch if no filters are active since latest handles it
+    if (dateFrom || dateTo || symbol !== 'ALL' || triggerType !== 'ALL' || mode !== 'ALL' || tfExecute !== 'ALL' || tfMonitor !== 'ALL') {
+      void fetchFiltered(true);
+    }
+  }, [dateFrom, dateTo, symbol, triggerType, mode, tfExecute, tfMonitor]);
+
   const downloadAllCsv = async () => {
     try {
       setError(null);
@@ -230,17 +243,10 @@ export function TriggerFloatingAnalyticsCard() {
         <div className="flex items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-            <h2 className="text-lg font-semibold text-white">Trigger Floating Analytics (A & B)</h2>
+            <h2 className="text-lg font-semibold text-white">Trigger Floating Analytics (A, B, C, D)</h2>
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => fetchFiltered(true)}
-              disabled={loading}
-              className="bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg border border-slate-700 text-slate-200 text-sm disabled:opacity-50"
-            >
-              {loading ? 'Loading...' : 'Filter'}
-            </button>
             <button
               onClick={() => downloadAllCsv()}
               disabled={loading}
@@ -265,22 +271,13 @@ export function TriggerFloatingAnalyticsCard() {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-8 gap-3">
-          <div className="md:col-span-1">
-            <label className="text-xs text-slate-400 block mb-1">Date From</label>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="w-full bg-slate-900/30 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm"
-            />
-          </div>
-          <div className="md:col-span-1">
-            <label className="text-xs text-slate-400 block mb-1">Date To</label>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className="w-full bg-slate-900/30 border border-slate-700 rounded-lg px-3 py-2 text-slate-200 text-sm"
+          <div className="md:col-span-2">
+            <label className="text-xs text-slate-400 block mb-1">Date Range</label>
+            <DateRangePicker
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onChange={(f, t) => { setDateFrom(f); setDateTo(t); }}
+              className="w-full"
             />
           </div>
 
@@ -345,19 +342,29 @@ export function TriggerFloatingAnalyticsCard() {
         <div className="relative z-10">
           <p className="text-sm text-slate-400 mb-3">
             Opsi A: max berdasarkan <b>floating_profit_usd</b> (sebelum profit).<br />
-            Opsi B: max berdasarkan <b>floating_pct_from_entry</b> (sebelum profit).
+            Opsi B: max berdasarkan <b>floating_pct_from_entry</b> (sebelum profit).<br />
+            Opsi C: max berdasarkan <b>floating_profit_usd</b> positif (MFE sebelum loss).<br />
+            Opsi D: max berdasarkan <b>floating_pct_from_entry</b> positif (MFE sebelum loss).
           </p>
 
           {active ? (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-5">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-5">
                 <StatCard title="Trade Count" value={`${active.total_trades ?? 0}`} icon={null} />
 
-                <StatCard title="Opsi A Max (USD)" value={formatMoney(active.max_max_before_profit_usd)} icon={null} />
+                <StatCard title="Opsi A Max (MAE USD)" value={formatMoney(active.max_max_before_profit_usd)} icon={null} />
 
                 <StatCard
-                  title="Opsi B Max (Pct)"
+                  title="Opsi B Max (MAE Pct)"
                   value={active.max_max_before_profit_pct == null ? '—' : `${active.max_max_before_profit_pct.toFixed(2)}%`}
+                  icon={null}
+                />
+
+                <StatCard title="Opsi C Max (MFE USD)" value={formatMoney(active.max_positive_floating_before_loss_usd)} icon={null} />
+
+                <StatCard
+                  title="Opsi D Max (MFE Pct)"
+                  value={active.max_positive_floating_before_loss_pct == null ? '—' : `${active.max_positive_floating_before_loss_pct.toFixed(2)}%`}
                   icon={null}
                 />
 
@@ -394,16 +401,17 @@ export function TriggerFloatingAnalyticsCard() {
                 <th className="py-2 pr-3">Trigger</th>
                 <th className="py-2 pr-3">Mode</th>
                 <th className="py-2 pr-3">tf</th>
-                <th className="py-2 pr-3">Max A (USD)</th>
-                <th className="py-2 pr-3">Max B (Pct)</th>
-                <th className="py-2 pr-3">Max Pts</th>
-                <th className="py-2 pr-3">Triggers</th>
+                <th className="py-2 pr-3">Max A (MAE USD)</th>
+                <th className="py-2 pr-3">Max B (MAE Pct)</th>
+                <th className="py-2 pr-3">Max C (MFE USD)</th>
+                <th className="py-2 pr-3">Max D (MFE Pct)</th>
+                <th className="py-2 pr-3">Trades</th>
               </tr>
             </thead>
             <tbody>
               {topRows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-4 text-slate-400">
+                  <td colSpan={10} className="py-4 text-slate-400">
                     Tidak ada data untuk filter ini.
                   </td>
                 </tr>
@@ -415,10 +423,15 @@ export function TriggerFloatingAnalyticsCard() {
                     <td className="py-2 pr-3 text-slate-200">{r.trigger_type}</td>
                     <td className="py-2 pr-3 text-slate-200">{r.mode}</td>
                     <td className="py-2 pr-3 text-slate-200">{r.tf_execute}/{r.tf_monitor}</td>
-                    <td className="py-2 pr-3 text-slate-200">{formatMoney(r.max_max_before_profit_usd)}</td>
-                    <td className="py-2 pr-3 text-slate-200">
+                    <td className="py-2 pr-3 text-orange-400 font-medium">{formatMoney(r.max_max_before_profit_usd)}</td>
+                    <td className="py-2 pr-3 text-orange-300">
                       {r.max_max_before_profit_pct == null ? '—' : `${r.max_max_before_profit_pct.toFixed(2)}%`}
                     </td>
+                    <td className="py-2 pr-3 text-emerald-400 font-medium">{formatMoney(r.max_positive_floating_before_loss_usd)}</td>
+                    <td className="py-2 pr-3 text-emerald-300">
+                      {r.max_positive_floating_before_loss_pct == null ? '—' : `${r.max_positive_floating_before_loss_pct.toFixed(2)}%`}
+                    </td>
+                    <td className="py-2 pr-3 text-slate-200">{r.total_trades ?? 0}</td>
                   </tr>
                 ))
               )}
