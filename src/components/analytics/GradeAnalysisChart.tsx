@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { X, Clock } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   BarChart,
@@ -40,12 +40,12 @@ export function GradeAnalysisChart({ trades }: GradeAnalysisChartProps) {
     const filteredTrades = trades.filter(t => {
       // Filter Symbol
       if (selectedSymbol !== 'ALL' && t.symbol !== selectedSymbol) return false;
-      
+
       // Filter Date
       const tradeDateStr = new Date(t.trade_created_at).toISOString().split('T')[0];
       if (dateFrom && tradeDateStr < dateFrom) return false;
       if (dateTo && tradeDateStr > dateTo) return false;
-        
+
       // Filter Time
       if (filterTimeFrom || filterTimeTo) {
         const tradeHHmm = format(new Date(t.trade_created_at), 'HH:mm');
@@ -57,7 +57,7 @@ export function GradeAnalysisChart({ trades }: GradeAnalysisChartProps) {
 
     const grades = ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'N/A'];
     const summary: Record<string, { win: number; loss: number; profit: number }> = {};
-    
+
     grades.forEach(g => summary[g] = { win: 0, loss: 0, profit: 0 });
 
     filteredTrades.forEach(trade => {
@@ -67,15 +67,15 @@ export function GradeAnalysisChart({ trades }: GradeAnalysisChartProps) {
           const n = JSON.parse(trade.notes);
           grade = n.grade || 'N/A';
         }
-      } catch (e) {}
+      } catch (e) { }
 
       if (!summary[grade]) {
         summary[grade] = { win: 0, loss: 0, profit: 0 };
       }
-      
+
       if (trade.result === 'PROFIT') summary[grade].win++;
       else summary[grade].loss++;
-      
+
       if (trade.profit) {
         summary[grade].profit += trade.profit;
       }
@@ -132,11 +132,10 @@ export function GradeAnalysisChart({ trades }: GradeAnalysisChartProps) {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setSelectedSymbol('ALL')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              selectedSymbol === 'ALL'
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${selectedSymbol === 'ALL'
                 ? 'bg-primary text-slate-900 shadow-md'
                 : 'bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700'
-            }`}
+              }`}
           >
             Semua Mata Uang
           </button>
@@ -144,11 +143,10 @@ export function GradeAnalysisChart({ trades }: GradeAnalysisChartProps) {
             <button
               key={sym}
               onClick={() => setSelectedSymbol(sym)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                selectedSymbol === sym
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${selectedSymbol === sym
                   ? 'bg-primary text-slate-900 shadow-md'
                   : 'bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700'
-              }`}
+                }`}
             >
               {sym}
             </button>
@@ -191,48 +189,48 @@ export function GradeAnalysisChart({ trades }: GradeAnalysisChartProps) {
       </div>
 
       <div className="h-72 w-full mt-2">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-          <XAxis 
-            dataKey="grade" 
-            stroke="#94a3b8" 
-            fontSize={12}
-            tickLine={false}
-            axisLine={false}
-          />
-          <YAxis 
-            yAxisId="left"
-            orientation="left"
-            stroke="#94a3b8" 
-            fontSize={12}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(val) => `${val}%`}
-          />
-          <YAxis 
-            yAxisId="right"
-            orientation="right"
-            stroke="#94a3b8" 
-            fontSize={12}
-            tickLine={false}
-            axisLine={false}
-            tickFormatter={(val) => `$${val}`}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend wrapperStyle={{ paddingTop: '10px' }} />
-          <Bar yAxisId="left" dataKey="winRate" name="Win Rate (%)" radius={[4, 4, 0, 0]}>
-            {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.winRate >= 50 ? '#38bdf8' : '#fb7185'} />
-            ))}
-          </Bar>
-          <Bar yAxisId="right" dataKey="netProfit" name="Net Profit ($)" radius={[4, 4, 0, 0]}>
-             {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.netProfit >= 0 ? '#10b981' : '#f43f5e'} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 20, right: 20, left: 0, bottom: 20 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+            <XAxis
+              dataKey="grade"
+              stroke="#94a3b8"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              yAxisId="left"
+              orientation="left"
+              stroke="#94a3b8"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(val) => `${val}%`}
+            />
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              stroke="#94a3b8"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(val) => `$${val}`}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend wrapperStyle={{ paddingTop: '10px' }} />
+            <Bar yAxisId="left" dataKey="winRate" name="Win Rate (%)" radius={[4, 4, 0, 0]}>
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.winRate >= 50 ? '#38bdf8' : '#fb7185'} />
+              ))}
+            </Bar>
+            <Bar yAxisId="right" dataKey="netProfit" name="Net Profit ($)" radius={[4, 4, 0, 0]}>
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.netProfit >= 0 ? '#10b981' : '#f43f5e'} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
