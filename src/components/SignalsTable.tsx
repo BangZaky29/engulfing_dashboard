@@ -16,6 +16,14 @@ interface ParsedNotes {
   total_score?: number;
   ticket_id?: number | string;
   score_breakdown?: string;
+  trading_session?: string;
+  h1_trigger_source?: string;
+  m15_trigger_source?: string;
+  m5_trigger_source?: string;
+  ema_distance_pts?: number;
+  ema_distance_status?: string;
+  h1_ema_distance_pts?: number;
+  h1_ema_distance_status?: string;
 }
 
 export function SignalsTable({ signals, dstMode }: SignalsTableProps) {
@@ -56,12 +64,43 @@ export function SignalsTable({ signals, dstMode }: SignalsTableProps) {
       
       const isBullish = sig.pattern_type === 'bullish_engulfing';
       const direction = isBullish ? 'BUY' : 'SELL';
-      const grade = notesData.grade || sig.trading_session ? (notesData.grade || '-') : '-';
+      const grade = notesData.grade || (sig.trading_session ? notesData.grade : '-') || '-';
       const score = notesData.total_score ?? null;
       const ticketId = notesData.ticket_id || null;
+      
+      const isInfoRow = typeof ticketId === 'string' && (ticketId === 'TFM_STATUS_CHANGE' || ticketId === 'INFO_SYNC' || ticketId.startsWith('INFO_'));
+      const sessionRaw = sig.trading_session || notesData.trading_session || '';
+      const session = isInfoRow ? '—' : (sessionRaw || 'Unknown');
+      
+      let emaDistancePts = notesData.ema_distance_pts ?? notesData.h1_ema_distance_pts ?? null;
+      let emaDistanceStatus = notesData.ema_distance_status ?? notesData.h1_ema_distance_status ?? null;
+
+      if (emaDistancePts == null && sig.curr_open && sig.ema_slow_value && sig.curr_open > 0 && sig.ema_slow_value > 0) {
+        const sym = sig.symbol.toUpperCase();
+        let pt = 0.01;
+        if (sym.includes('NASDAQ') || sym.includes('US100') || sym.includes('USTEC') || sym.includes('BTC')) {
+          pt = 1.0;
+        }
+        const distRaw = Math.abs(sig.curr_open - sig.ema_slow_value);
+        emaDistancePts = Math.round(distRaw / pt);
+
+        let minPts = 250, maxPts = 1000;
+        if (sym.includes('NASDAQ') || sym.includes('US100') || sym.includes('USTEC')) {
+          minPts = 2100; maxPts = 7500;
+        } else if (sym.includes('BTC')) {
+          minPts = 12500; maxPts = 37000;
+        }
+
+        if (emaDistancePts < minPts) emaDistanceStatus = 'INVALID';
+        else if (emaDistancePts > maxPts) emaDistanceStatus = 'VALID';
+        else emaDistanceStatus = 'STRONG';
+      }
+      const h1Trigger = notesData.h1_trigger_source || '-';
+      const m15Trigger = notesData.m15_trigger_source || '-';
+      const m5Trigger = notesData.m5_trigger_source || '-';
 
       // Handle fallback if grade in database is N/A or if notes parsing fails but it has trading_session
-      const displayGrade = sig.trading_session && grade === '-' ? 'N/A' : grade;
+      const displayGrade = (sig.trading_session || notesData.trading_session) && grade === '-' ? 'N/A' : grade;
 
       return {
         ...sig,
@@ -69,6 +108,12 @@ export function SignalsTable({ signals, dstMode }: SignalsTableProps) {
         grade: displayGrade,
         score,
         ticketId,
+        displaySession: session,
+        emaDistancePts,
+        emaDistanceStatus,
+        h1Trigger,
+        m15Trigger,
+        m5Trigger,
         scoreBreakdown: notesData.score_breakdown || ''
       };
     });
@@ -387,6 +432,7 @@ export function SignalsTable({ signals, dstMode }: SignalsTableProps) {
                 <th className="px-6 py-4 font-medium text-sm">Sesi</th>
                 <th className="px-6 py-4 font-medium text-sm">Strategi</th>
                 <th className="px-6 py-4 font-medium text-sm">Grade & Score</th>
+                <th className="px-6 py-4 font-medium text-sm">EMA Distance</th>
                 <th className="hidden lg:table-cell px-6 py-4 font-medium text-sm">Triggers (H1|M15|M5)</th>
                 <th className="px-6 py-4 font-medium text-sm">Status</th>
                 <th className="px-6 py-4 font-medium text-sm">Detail / Alasan Skip</th>
@@ -395,7 +441,7 @@ export function SignalsTable({ signals, dstMode }: SignalsTableProps) {
             <tbody className="divide-y divide-slate-700/50">
               {paginatedSignals.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-8 text-center text-muted">
+                  <td colSpan={9} className="px-6 py-8 text-center text-muted">
                     Tidak ada riwayat trigger yang cocok dengan filter.
                   </td>
                 </tr>
@@ -438,7 +484,7 @@ export function SignalsTable({ signals, dstMode }: SignalsTableProps) {
                     <td className="px-6 py-4 text-sm text-slate-300 font-medium">
                       <span className="inline-flex items-center gap-1 bg-slate-800/60 px-2 py-0.5 rounded border border-slate-700 text-xs font-mono text-slate-300">
                         <Globe size={11} className="text-primary" />
-                        {sig.trading_session || 'Unknown'}
+                        {sig.displaySession}
                       </span>
                     </td>
 
@@ -475,29 +521,47 @@ export function SignalsTable({ signals, dstMode }: SignalsTableProps) {
                       </div>
                     </td>
 
+                    {/* EMA Distance */}
+                    <td className="px-6 py-4 text-sm whitespace-nowrap">
+                      {sig.emaDistancePts != null ? (
+                        <div className="flex flex-col items-start gap-0.5">
+                          <span className="font-mono text-xs text-slate-200 font-semibold">{sig.emaDistancePts.toLocaleString()} pts</span>
+                          {sig.emaDistanceStatus && (
+                            <span className={cn(
+                              "text-[10px] px-1.5 py-0.2 rounded font-bold border",
+                              sig.emaDistanceStatus === 'STRONG' ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" :
+                              sig.emaDistanceStatus === 'VALID' ? "bg-amber-500/20 text-amber-400 border-amber-500/30" :
+                              "bg-rose-500/20 text-rose-400 border-rose-500/30"
+                            )}>
+                              {sig.emaDistanceStatus}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted text-xs">—</span>
+                      )}
+                    </td>
+
                     {/* Triggers */}
                     <td className="hidden lg:table-cell px-6 py-4">
-                      {(() => {
-                        try {
-                          const n = sig.notes ? JSON.parse(sig.notes) : {};
-                          const h1 = n.h1_trigger_source || '-';
-                          const m15 = n.m15_trigger_source || '-';
-                          const m5 = n.m5_trigger_source || '-';
-                          if (h1 === '-' && m15 === '-' && m5 === '-') return <span className="text-muted">-</span>;
-                          return (
-                            <div className="flex flex-col gap-1 font-mono text-[10px]">
-                              <span className="text-purple-400">H1: {h1}</span>
-                              <span className="text-blue-400">M15: {m15}</span>
-                              <span className="text-emerald-400">M5: {m5}</span>
-                            </div>
-                          );
-                        } catch(e) { return <span className="text-muted">-</span>; }
-                      })()}
+                      {sig.h1Trigger === '-' && sig.m15Trigger === '-' && sig.m5Trigger === '-' ? (
+                        <span className="text-muted text-xs">-</span>
+                      ) : (
+                        <div className="flex flex-col gap-1 font-mono text-[10px]">
+                          <span className="text-purple-400">H1: {sig.h1Trigger}</span>
+                          <span className="text-blue-400">M15: {sig.m15Trigger}</span>
+                          <span className="text-emerald-400">M5: {sig.m5Trigger}</span>
+                        </div>
+                      )}
                     </td>
 
                     {/* Status */}
                     <td className="px-6 py-4 text-sm">
-                      {typeof sig.ticketId === 'string' && sig.ticketId === 'INFO_SYNC' ? (
+                      {typeof sig.ticketId === 'string' && sig.ticketId === 'TFM_STATUS_CHANGE' ? (
+                        <span className="inline-flex items-center gap-1 text-purple-400 font-medium bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
+                          📡 Status Update
+                        </span>
+                      ) : typeof sig.ticketId === 'string' && sig.ticketId === 'INFO_SYNC' ? (
                         <span className="inline-flex items-center gap-1 text-orange-400 font-medium bg-orange-500/10 px-2 py-0.5 rounded border border-orange-500/20">
                           🔥 Sync Signal
                         </span>

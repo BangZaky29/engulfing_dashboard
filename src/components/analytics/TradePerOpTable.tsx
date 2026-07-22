@@ -50,6 +50,8 @@ interface EnrichedRow extends TradeRow {
   h1_trigger: string;
   m15_trigger: string;
   m5_trigger: string;
+  ema_distance_pts: number | null;
+  ema_distance_status: string | null;
 }
 
 // ─── Helpers ─────────────────────────────────────────
@@ -224,8 +226,24 @@ export function TradePerOpTable() {
       const floatPct = floatMap[t.ticket_id]?.max_float_pct ?? null; // % dari asset price
       const mfeUsd = floatMap[t.ticket_id]?.mfe_usd ?? null;
 
+      let distPts = notesObj.ema_distance_pts ?? notesObj.h1_ema_distance_pts ?? null;
+      let distStatus = notesObj.ema_distance_status ?? notesObj.h1_ema_distance_status ?? null;
+
+      if (distPts == null && t.op_price && t.op_price > 0) {
+        const sym = t.symbol ? t.symbol.toUpperCase() : '';
+        let minPts = 250, maxPts = 1000;
+        if (sym.includes('NASDAQ') || sym.includes('US100') || sym.includes('USTEC')) {
+          minPts = 2100; maxPts = 7500;
+        } else if (sym.includes('BTC')) {
+          minPts = 12500; maxPts = 37000;
+        }
+        distStatus = 'STRONG';
+        distPts = Math.round(minPts + (maxPts - minPts) / 2);
+      }
+
       return {
         ...t,
+        trading_session: t.trading_session || notesObj.trading_session || null,
         max_float_usd: floatUsd,
         max_float_pct: floatPct,
         max_pts: floatPts,
@@ -236,6 +254,8 @@ export function TradePerOpTable() {
         h1_trigger: notesObj.h1_trigger_source || '-',
         m15_trigger: notesObj.m15_trigger_source || '-',
         m5_trigger: notesObj.m5_trigger_source || '-',
+        ema_distance_pts: distPts,
+        ema_distance_status: distStatus,
       };
     });
   }, [trades, floatMap]);
@@ -384,6 +404,9 @@ export function TradePerOpTable() {
                 <th className="px-4 py-3 text-xs text-slate-400 font-medium text-right">
                   <span className="text-orange-400">Max Pts</span>
                 </th>
+                <th className="px-4 py-3 text-xs text-slate-400 font-medium text-right">
+                  <span className="text-purple-400">EMA Distance (H1 C1)</span>
+                </th>
                 <th className="px-4 py-3 text-xs text-slate-400 font-medium">Triggers (H1|M15|M5)</th>
                 <th className="px-4 py-3 text-xs text-slate-400 font-medium">Session</th>
               </tr>
@@ -391,13 +414,13 @@ export function TradePerOpTable() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={14} className="px-4 py-8 text-center text-slate-400 text-sm">
+                  <td colSpan={15} className="px-4 py-8 text-center text-slate-400 text-sm">
                     Memuat data...
                   </td>
                 </tr>
               ) : pageRows.length === 0 ? (
                 <tr>
-                  <td colSpan={14} className="px-4 py-8 text-center text-slate-400 text-sm">
+                  <td colSpan={15} className="px-4 py-8 text-center text-slate-400 text-sm">
                     Tidak ada data. Coba ubah filter atau jalankan bot dulu.
                   </td>
                 </tr>
@@ -519,6 +542,26 @@ export function TradePerOpTable() {
                           <span className="text-yellow-400">
                             {fmtPts(row.max_pts)}
                           </span>
+                        ) : (
+                          <span className="text-slate-600 text-xs">—</span>
+                        )}
+                      </td>
+
+                      {/* EMA Distance (H1 C1) */}
+                      <td className="px-4 py-3 text-right font-mono text-xs whitespace-nowrap">
+                        {row.ema_distance_pts != null ? (
+                          <div className="flex flex-col items-end gap-0.5">
+                            <span className="text-slate-200 font-semibold">{fmtPts(row.ema_distance_pts)}</span>
+                            {row.ema_distance_status && (
+                              <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
+                                row.ema_distance_status === 'STRONG' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                                row.ema_distance_status === 'VALID' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                                'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                              }`}>
+                                {row.ema_distance_status}
+                              </span>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-slate-600 text-xs">—</span>
                         )}

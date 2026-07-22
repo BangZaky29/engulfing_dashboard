@@ -75,6 +75,7 @@ export interface EngulfingSignal {
   curr_close?: number;
   curr_high?: number;
   curr_low?: number;
+  ema_slow_value?: number;
 }
 
 export interface TradeActiveLog {
